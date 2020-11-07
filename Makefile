@@ -611,3 +611,54 @@ superclean: clean clean-site
 		npm-update subpackages-npm-update                                           \
 		test-nyc clean-nyc report-nyc
 
+
+
+
+#
+# Available tasks/targets:
+# 
+# all:
+# analyze-coverage:
+# basic-tests:
+# build:
+# bump:
+# check-coverage:
+# clean-nyc:
+# clean-site:
+# clean:
+# comparison:
+# compile-site:
+# deploy:
+# dynamic-analysis:
+# error-handling-tests:
+# everything:
+# examples-test:
+# examples/***:
+# examples:
+# examples_directory:
+# git-tag:
+# git:
+# github-issue-tests:
+# lexer-comparison:
+# lexer-test:
+# misc-tests:
+# npm-install:
+# npm-update:
+# prep:
+# prep_util_dir:
+# preview:
+# profiling:
+# publish:
+# report-nyc:
+# site:
+# subpackages-build:
+# subpackages-npm-update:
+# subpackages-prep:
+# subpackages-publish:
+# subpackages:
+# superclean:
+# sync:
+# test-nyc:
+# test:
+# web-examples:
+# 

@@ -28,11 +28,15 @@ export default {
     exec: code_exec.exec,
     dump: code_exec.dump,
 
+    generateMapper4JisonGrammarIdentifiers: parse2AST.generateMapper4JisonGrammarIdentifiers,
     parseCodeChunkToAST: parse2AST.parseCodeChunkToAST,
     compileCodeToES5: parse2AST.compileCodeToES5,
     prettyPrintAST: parse2AST.prettyPrintAST,
     checkActionBlock: parse2AST.checkActionBlock,
     trimActionCode: parse2AST.trimActionCode,
+
+    ID_REGEX_BASE: parse2AST.ID_REGEX_BASE,
+    IN_ID_CHARSET: parse2AST.IN_ID_CHARSET,
 
     printFunctionSourceCode: stringifier.printFunctionSourceCode,
     printFunctionSourceCodeContainer: stringifier.printFunctionSourceCodeContainer,

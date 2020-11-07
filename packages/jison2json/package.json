@@ -1,6 +1,6 @@
 {
   "name": "@gerhobbelt/jison2json",
-  "version": "0.6.2-220",
+  "version": "0.6.5-222",
   "description": "Converts jison grammar definitions to JSON",
   "main": "jison2json.js",
   "scripts": {
@@ -30,12 +30,12 @@
     "node": ">=8.0"
   },
   "dependencies": {
-    "@gerhobbelt/ebnf-parser": "0.6.2-220",
-    "@gerhobbelt/lex-parser": "0.6.2-220",
-    "@gerhobbelt/nomnom": "1.8.4-24"
+    "@gerhobbelt/ebnf-parser": "0.6.5-222",
+    "@gerhobbelt/lex-parser": "0.6.5-222",
+    "@gerhobbelt/nomnom": "1.8.4-29"
   },
   "devDependencies": {
-    "chai": "4.1.2",
-    "mocha": "5.2.0"
+    "chai": "4.2.0",
+    "mocha": "6.2.2"
   }
 }
