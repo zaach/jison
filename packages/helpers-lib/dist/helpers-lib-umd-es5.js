@@ -562,8 +562,22 @@
       return set[lsidx];
     }
 
-    const escCharSet = "ဩ ℹ இ ண ஐ Ϟ ല ઊ";
-    const typeIdCharSets = ["ᐁ  ᐂ  ᐃ  ᐄ  ᐅ  ᐆ  ᐇ  ᐈ  ᐉ  ᐊ  ᐋ  ᐌ  ᐍ  ᐎ  ᐏ  ᐐ  ᐑ  ᐒ  ᐓ  ᐔ  ᐕ  ᐖ  ᐗ  ᐘ  ᐙ  ᐚ  ᐛ  ᐫ  ᐬ  ᐭ  ᐮ", "ᐯ  ᐰ  ᐱ  ᐲ  ᐳ  ᐴ  ᐵ  ᐶ  ᐷ  ᐸ  ᐹ  ᐺ  ᐻ  ᐼ  ᐽ  ᐾ  ᐿ  ᑀ  ᑁ  ᑂ  ᑃ  ᑄ  ᑅ  ᑆ  ᑇ  ᑈ", "ᑌ  ᑍ  ᑎ  ᑏ  ᑐ  ᑑ  ᑒ  ᑓ  ᑔ  ᑕ  ᑖ  ᑗ  ᑘ  ᑙ  ᑚ  ᑛ  ᑜ  ᑝ  ᑞ  ᑟ  ᑠ  ᑡ  ᑢ  ᑣ  ᑤ  ᑥ  ᑧ  ᑨ  ᑩ  ᑪ", "ᑫ  ᑬ  ᑭ  ᑮ  ᑯ  ᑰ  ᑱ  ᑲ  ᑳ  ᑴ  ᑵ  ᑶ  ᑷ  ᑸ  ᑹ  ᑺ  ᑻ  ᑼ  ᑽ  ᑾ  ᑿ  ᒀ  ᒁ  ᒂ  ᒅ  ᒆ  ᒇ  ᒈ", "ᒉ  ᒊ  ᒋ  ᒌ  ᒍ  ᒎ  ᒏ  ᒐ  ᒑ  ᒒ  ᒓ  ᒔ  ᒕ  ᒖ  ᒗ  ᒘ  ᒙ  ᒚ  ᒛ  ᒜ  ᒝ  ᒞ  ᒟ  ᒠ", "ᒣ  ᒤ  ᒥ  ᒦ  ᒧ  ᒨ  ᒩ  ᒪ  ᒫ  ᒬ  ᒭ  ᒮ  ᒯ  ᒰ  ᒱ  ᒲ  ᒳ  ᒴ  ᒵ  ᒶ  ᒷ  ᒸ  ᒹ  ᒺ", "ᓓ  ᓔ  ᓕ  ᓖ  ᓗ  ᓘ  ᓙ  ᓚ  ᓛ  ᓜ  ᓝ  ᓞ  ᓟ  ᓠ  ᓡ  ᓢ  ᓣ  ᓤ  ᓥ  ᓦ  ᓧ  ᓨ  ᓩ", "ᓭ  ᓮ  ᓯ  ᓰ  ᓱ  ᓲ  ᓳ  ᓴ  ᓵ  ᓶ  ᓷ  ᓸ  ᓹ  ᓺ  ᓻ  ᓼ  ᓽ  ᓾ  ᓿ  ᔀ  ᔁ  ᔂ  ᔃ  ᔄ", "ᔐ  ᔑ  ᔒ  ᔓ  ᔔ  ᔕ  ᔖ  ᔗ  ᔘ  ᔙ  ᔚ  ᔛ  ᔜ  ᔝ  ᔞ  ᔟ  ᔠ  ᔡ  ᔢ  ᔣ  ᔤ", "ᔦ  ᔧ  ᔨ  ᔩ  ᔪ  ᔫ  ᔬ  ᔭ  ᔮ  ᔯ  ᔰ  ᔱ  ᔲ  ᔳ  ᔴ  ᔵ  ᔶ  ᔷ  ᔸ  ᔹ  ᔺ  ᔻ  ᔼ  ᔽ", "ᓀ  ᓁ  ᓂ  ᓃ  ᓄ  ᓅ  ᓆ  ᓇ  ᓈ  ᓉ  ᓊ  ᓋ  ᓌ  ᓍ  ᓎ  ᓏ", "ᕂ  ᕃ  ᕄ  ᕅ  ᕆ  ᕇ  ᕈ  ᕉ  ᕊ  ᕋ  ᕌ  ᕍ  ᕎ  ᕏ", "ᕞ  ᕟ  ᕠ  ᕡ  ᕢ  ᕣ  ᕤ  ᕥ  ᕦ  ᕧ  ᕨ  ᕩ", "ᖸ  ᖹ  ᖺ  ᖻ  ᖼ  ᖽ  ᖾ  ᖿ  ᗀ  ᗁ  ᗂ  ᗃ", "ᗜ  ᗝ  ᗞ  ᗟ  ᗠ  ᗡ  ᗢ  ᗣ  ᗤ  ᗥ  ᗦ  ᗧ  ᗨ  ᗩ  ᗪ  ᗫ  ᗬ  ᗭ", "ᗯ  ᗰ  ᗱ  ᗲ  ᗳ  ᗴ  ᗵ  ᗶ  ᗷ  ᗸ  ᗹ  ᗺ  ᗻ  ᗼ  ᗽ  ᗾ  ᗿ  ᘀ", "ᘔ  ᘕ  ᘖ  ᘗ  ᘘ  ᘙ  ᘚ  ᘛ  ᘜ  ᘝ  ᘞ  ᘟ  ᘠ  ᘡ", "ᘢ  ᘣ  ᘤ  ᘥ  ᘦ  ᘧ  ᘨ  ᘩ  ᘪ  ᘫ  ᘬ  ᘭ  ᘴ  ᘵ  ᘶ  ᘷ  ᘸ  ᘹ", "ᕓ  ᕔ  ᕕ  ᕖ  ᕗ  ᕘ  ᕙ  ᕚ  ᕛ  ᕜ", "ᗄ  ᗅ  ᗆ  ᗇ  ᗈ  ᗉ  ᗊ  ᗋ  ᗌ  ᗍ  ᗎ  ᗏ  ᗐ  ᗑ  ᗒ  ᗓ  ᗔ  ᗕ  ᗖ  ᗗ  ᗘ  ᗙ  ᗚ  ᗛ"]; //const I = 'ⅠⅡⅢⅣⅤⅥⅦⅧⅨⅩⅪⅫ';   // 1..12, but accepted as IdentifierStart in JavaScript :-) 
+    const escCharSet = "ဩ ℹ இ ண ஐ Ϟ ല ઊ"; // Currently we only need 7 rows of typeIdCharSets. The other rows are commented out but available for future use:
+
+    const typeIdCharSets = ["ᐁ  ᐂ  ᐃ  ᐄ  ᐅ  ᐆ  ᐇ  ᐈ  ᐉ  ᐊ  ᐋ  ᐌ  ᐍ  ᐎ  ᐏ  ᐐ  ᐑ  ᐒ  ᐓ  ᐔ  ᐕ  ᐖ  ᐗ  ᐘ  ᐙ  ᐚ  ᐛ  ᐫ  ᐬ  ᐭ  ᐮ", //"ᐯ  ᐰ  ᐱ  ᐲ  ᐳ  ᐴ  ᐵ  ᐶ  ᐷ  ᐸ  ᐹ  ᐺ  ᐻ  ᐼ  ᐽ  ᐾ  ᐿ  ᑀ  ᑁ  ᑂ  ᑃ  ᑄ  ᑅ  ᑆ  ᑇ  ᑈ",
+    "ᑌ  ᑍ  ᑎ  ᑏ  ᑐ  ᑑ  ᑒ  ᑓ  ᑔ  ᑕ  ᑖ  ᑗ  ᑘ  ᑙ  ᑚ  ᑛ  ᑜ  ᑝ  ᑞ  ᑟ  ᑠ  ᑡ  ᑢ  ᑣ  ᑤ  ᑥ  ᑧ  ᑨ  ᑩ  ᑪ", "ᑫ  ᑬ  ᑭ  ᑮ  ᑯ  ᑰ  ᑱ  ᑲ  ᑳ  ᑴ  ᑵ  ᑶ  ᑷ  ᑸ  ᑹ  ᑺ  ᑻ  ᑼ  ᑽ  ᑾ  ᑿ  ᒀ  ᒁ  ᒂ  ᒅ  ᒆ  ᒇ  ᒈ", //"ᒉ  ᒊ  ᒋ  ᒌ  ᒍ  ᒎ  ᒏ  ᒐ  ᒑ  ᒒ  ᒓ  ᒔ  ᒕ  ᒖ  ᒗ  ᒘ  ᒙ  ᒚ  ᒛ  ᒜ  ᒝ  ᒞ  ᒟ  ᒠ",
+    //"ᒣ  ᒤ  ᒥ  ᒦ  ᒧ  ᒨ  ᒩ  ᒪ  ᒫ  ᒬ  ᒭ  ᒮ  ᒯ  ᒰ  ᒱ  ᒲ  ᒳ  ᒴ  ᒵ  ᒶ  ᒷ  ᒸ  ᒹ  ᒺ",
+    //"ᓓ  ᓔ  ᓕ  ᓖ  ᓗ  ᓘ  ᓙ  ᓚ  ᓛ  ᓜ  ᓝ  ᓞ  ᓟ  ᓠ  ᓡ  ᓢ  ᓣ  ᓤ  ᓥ  ᓦ  ᓧ  ᓨ  ᓩ",
+    //"ᓭ  ᓮ  ᓯ  ᓰ  ᓱ  ᓲ  ᓳ  ᓴ  ᓵ  ᓶ  ᓷ  ᓸ  ᓹ  ᓺ  ᓻ  ᓼ  ᓽ  ᓾ  ᓿ  ᔀ  ᔁ  ᔂ  ᔃ  ᔄ",
+    //"ᔐ  ᔑ  ᔒ  ᔓ  ᔔ  ᔕ  ᔖ  ᔗ  ᔘ  ᔙ  ᔚ  ᔛ  ᔜ  ᔝ  ᔞ  ᔟ  ᔠ  ᔡ  ᔢ  ᔣ  ᔤ",
+    "ᔦ  ᔧ  ᔨ  ᔩ  ᔪ  ᔫ  ᔬ  ᔭ  ᔮ  ᔯ  ᔰ  ᔱ  ᔲ  ᔳ  ᔴ  ᔵ  ᔶ  ᔷ  ᔸ  ᔹ  ᔺ  ᔻ  ᔼ  ᔽ", //"ᓀ  ᓁ  ᓂ  ᓃ  ᓄ  ᓅ  ᓆ  ᓇ  ᓈ  ᓉ  ᓊ  ᓋ  ᓌ  ᓍ  ᓎ  ᓏ",
+    //"ᕂ  ᕃ  ᕄ  ᕅ  ᕆ  ᕇ  ᕈ  ᕉ  ᕊ  ᕋ  ᕌ  ᕍ  ᕎ  ᕏ",
+    //"ᕞ  ᕟ  ᕠ  ᕡ  ᕢ  ᕣ  ᕤ  ᕥ  ᕦ  ᕧ  ᕨ  ᕩ",
+    //"ᖸ  ᖹ  ᖺ  ᖻ  ᖼ  ᖽ  ᖾ  ᖿ  ᗀ  ᗁ  ᗂ  ᗃ",
+    "ᗜ  ᗝ  ᗞ  ᗟ  ᗠ  ᗡ  ᗢ  ᗣ  ᗤ  ᗥ  ᗦ  ᗧ  ᗨ  ᗩ  ᗪ  ᗫ  ᗬ  ᗭ", //"ᗯ  ᗰ  ᗱ  ᗲ  ᗳ  ᗴ  ᗵ  ᗶ  ᗷ  ᗸ  ᗹ  ᗺ  ᗻ  ᗼ  ᗽ  ᗾ  ᗿ  ᘀ",
+    "ᘔ  ᘕ  ᘖ  ᘗ  ᘘ  ᘙ  ᘚ  ᘛ  ᘜ  ᘝ  ᘞ  ᘟ  ᘠ  ᘡ", //"ᘢ  ᘣ  ᘤ  ᘥ  ᘦ  ᘧ  ᘨ  ᘩ  ᘪ  ᘫ  ᘬ  ᘭ  ᘴ  ᘵ  ᘶ  ᘷ  ᘸ  ᘹ",
+    //"ᕓ  ᕔ  ᕕ  ᕖ  ᕗ  ᕘ  ᕙ  ᕚ  ᕛ  ᕜ",
+    "ᗄ  ᗅ  ᗆ  ᗇ  ᗈ  ᗉ  ᗊ  ᗋ  ᗌ  ᗍ  ᗎ  ᗏ  ᗐ  ᗑ  ᗒ  ᗓ  ᗔ  ᗕ  ᗖ  ᗗ  ᗘ  ᗙ  ᗚ  ᗛ"]; //const I = 'ⅠⅡⅢⅣⅤⅥⅦⅧⅨⅩⅪⅫ';   // 1..12, but accepted as IdentifierStart in JavaScript :-) 
     // Probable speed improvement: scan a single time through the (probably large) input source,
     // looking for all characters in parallel, instead of scanning N times through there:
     // construct a regex to dig out all potential occurrences and take it from there.
@@ -667,9 +681,8 @@
       // - direct symbol references, e.g. `#NUMBER#` when there's a `%token NUMBER` for your grammar.
       //   These represent the token ID number.
       //   
-      //   -> (1+2) start-# + end-#
+      //   -> (1) start-#
       tokenDirectIdentifierStart: escChar + typeIdChar[0],
-      tokenDirectIdentifierEnd: escChar + typeIdChar[1],
       tokenDirectIdentifierRe: new XRegExp__default['default'](`#(${ID_REGEX_BASE})#`, 'g'),
       // - alias/token value references, e.g. `$token`, `$2`
       // 
@@ -685,7 +698,7 @@
       // - result location reference `@$`
       // 
       //   -> (6) single-@
-      tokenLocationStart: escChar + typeIdChar[5],
+      tokenLocationStart: escChar + typeIdChar[1],
       tokenLocationRe: new XRegExp__default['default'](`@(${ID_REGEX_BASE})|@([0-9]+)`, 'g'),
       // - alias/token id numbers, e.g. `#token`, `#2`
       // 
@@ -706,22 +719,22 @@
       // - 'negative index' value references, e.g. `$-2`
       // 
       //   -> (8) single-negative-$
-      tokenNegativeValueReferenceStart: escChar + typeIdChar[7],
+      tokenNegativeValueReferenceStart: escChar + typeIdChar[4],
       tokenValueReferenceRe: new XRegExp__default['default'](`$-([0-9]+)`, 'g'),
       // - 'negative index' location reference, e.g. `@-2`
       // 
       //   -> (7) single-negative-@
-      tokenNegativeLocationStart: escChar + typeIdChar[6],
+      tokenNegativeLocationStart: escChar + typeIdChar[5],
       tokenNegativeLocationRe: new XRegExp__default['default'](`@-([0-9]+)`, 'g'),
       // - 'negative index' stack indexes, e.g. `##-2`
       // 
       //   -> (5) double-negative-#
-      tokenNegativeStackIndexStart: escChar + typeIdChar[4],
+      tokenNegativeStackIndexStart: escChar + typeIdChar[6],
       tokenNegativeStackIndexRe: new XRegExp__default['default'](`#-([0-9]+)`, 'g'),
       // combined regex for encoding direction
-      tokenDetect4EncodeRe: new XRegExp__default['default'](`([^$@#${IN_ID_CHARSET}])([$@#]|##)(${ID_REGEX_BASE}|[$]|-?[0-9]+)(#?)(?![$${IN_ID_CHARSET}])`, 'g'),
+      tokenDetect4EncodeRe: new XRegExp__default['default'](`([^$@#${IN_ID_CHARSET}])([$@#]|##)(${ID_REGEX_BASE}|[$]|-?[0-9]+)(#?)(?![$@#${IN_ID_CHARSET}])`, 'g'),
       // combined regex for decoding direction
-      tokenDetect4DecodeRe: new XRegExp__default['default'](`([^$${IN_ID_CHARSET}])([$]|${escChar}[${typeIdChar.slice(0, 7).join('')}])(${ID_REGEX_BASE}|[$]|[0-9]+)(${escChar}${typeIdChar[1]}?)(?![$${IN_ID_CHARSET}])`, 'g'),
+      tokenDetect4DecodeRe: new XRegExp__default['default'](`([^$${IN_ID_CHARSET}])(${escChar}[${typeIdChar.slice(0, 7).join('')}])(${ID_REGEX_BASE}|[$]|[0-9]+)(?![$@#${IN_ID_CHARSET}])`, 'g'),
       encode: function encodeJisonTokens(src, locationOffsetSpec) {
         let re = this.tokenDetect4EncodeRe; // reset regex
 
@@ -798,7 +811,7 @@
               }
 
               if (p4 !== '') {
-                return p1 + this.tokenDirectIdentifierStart + p3 + this.tokenDirectIdentifierEnd;
+                return p1 + this.tokenDirectIdentifierStart + p3;
               }
 
               return p1 + this.tokenIdentifierStart + p3;
@@ -809,8 +822,7 @@
         return src.substring(1);
       },
       decode: function decodeJisonTokens(src, locationOffsetSpec) {
-        let re = this.tokenDetect4DecodeRe;
-        console.error("RE:", re); // reset regex
+        let re = this.tokenDetect4DecodeRe; // reset regex
 
         re.lastIndex = 0; // patch `src` for the lookbehind emulation in the main regex used:
 
@@ -823,137 +835,65 @@
         // and we DO NOT want to be pedantically strict while we are unable to parse
         // the input very precisely yet.
 
-        src = src.replace(re, (m, p1, p2, p3, p4, offset) => {
+        src = src.replace(re, (m, p1, p2, p3, offset) => {
           // p1 is only serving as lookbehind emulation
-          console.error("match to process:", {
-            m,
-            p1,
-            p2,
-            p3,
-            p4,
-            offset
-          });
-
           switch (p2) {
             case this.tokenNegativeValueReferenceStart:
-              // p4 MUST be empty
-              if (p4 !== '') {
-                if (locationOffsetSpec) {
-                  locationOffsetSpec.reportLocation(`syntax error: ${p2 + p3} cannot be followed by ${p4}`, src, offset + p1.length + p2.length + p3.length);
-                }
-
-                return p1 + p2 + p3 + p4;
-              }
-
               return p1 + "$-" + p3;
 
             case this.tokenNegativeStackIndexStart:
-              // p4 MUST be empty
-              if (p4 !== '') {
-                if (locationOffsetSpec) {
-                  locationOffsetSpec.reportLocation(`syntax error: ${p2 + p3} cannot be followed by ${p4}`, src, offset + p1.length + p2.length + p3.length);
-                }
-
-                return p1 + p2 + p3 + p4;
-              }
-
               return p1 + "##-" + p3;
 
             case this.tokenStackIndexStart:
-              // p4 MUST be empty
-              if (p4 !== '') {
-                if (locationOffsetSpec) {
-                  locationOffsetSpec.reportLocation(`syntax error: ${p2 + p3} cannot be followed by ${p4}`, src, offset + p1.length + p2.length + p3.length);
-                }
-
-                return p1 + p2 + p3 + p4;
-              }
-
               return p1 + "##" + p3;
 
             case this.tokenNegativeLocationStart:
-              // p4 MUST be empty
-              if (p4 !== '') {
-                if (locationOffsetSpec) {
-                  locationOffsetSpec.reportLocation(`syntax error: ${p2 + p3} cannot be followed by ${p4}`, src, offset + p1.length + p2.length + p3.length);
-                }
-
-                return p1 + p2 + p3 + p4;
-              }
-
               return p1 + "@-" + p3;
 
             case this.tokenLocationStart:
-              // p4 MUST be empty
-              if (p4 !== '') {
-                if (locationOffsetSpec) {
-                  locationOffsetSpec.reportLocation(`syntax error: ${p2 + p3} cannot be followed by ${p4}`, src, offset + p1.length + p2.length + p3.length);
-                }
-
-                return p1 + p2 + p3 + p4;
-              }
-
               return p1 + "@" + p3;
 
             case this.tokenDirectIdentifierStart:
-              // p4 MUST be non-empty; p3 CANNOT be a negative value or token ID
+              // p3 CANNOT be a negative value or token ID
               if (p3[0] === '-') {
                 if (locationOffsetSpec) {
                   locationOffsetSpec.reportLocation(`syntax error: ${p2 + p3 + p4} is an illegal negative reference type`, src, offset + p1.length + p2.length);
                 }
 
-                return p1 + p2 + p3 + p4;
-              }
-
-              if (p4 === '') {
-                if (locationOffsetSpec) {
-                  locationOffsetSpec.reportLocation(`syntax error: ${p2 + p3} must be terminated by ${this.tokenDirectIdentifierStart} sentinel`, src, offset + p1.length);
-                }
-
-                return p1 + p2 + p3 + p4;
+                return p1 + p2 + p3;
               }
 
               return p1 + '#' + p3 + '#';
 
             case this.tokenIdentifierStart:
-              // p4 MUST be empty; p3 CANNOT be a negative value or token ID
+              // p3 CANNOT be a negative value or token ID
               if (p3[0] === '-') {
                 if (locationOffsetSpec) {
                   locationOffsetSpec.reportLocation(`syntax error: ${p2 + p3 + p4} is an illegal negative reference type`, src, offset + p1.length + p2.length);
                 }
 
-                return p1 + p2 + p3 + p4;
-              }
-
-              if (p4 !== '') {
-                if (locationOffsetSpec) {
-                  locationOffsetSpec.reportLocation(`syntax error: ${p2 + p3} cannot be followed by ${p4}`, src, offset + p1.length + p2.length + p3.length);
-                }
-
-                return p1 + p2 + p3 + p4;
+                return p1 + p2 + p3;
               }
 
               return p1 + '#' + p3;
 
             default:
               if (locationOffsetSpec) {
-                locationOffsetSpec.reportLocation(`syntax error: unexpected jison token sentinel escape ${p2} at ${p2 + p3 + p4}`, src, offset + p1.length);
+                locationOffsetSpec.reportLocation(`syntax error: unexpected jison token sentinel escape ${p2} at ${p2 + p3}`, src, offset + p1.length);
               }
 
-              return p1 + p2 + p3 + p4;
+              return p1 + p2 + p3;
           }
-        });
-        return src;
+        }); // and remove the added prefix which was used for lookbehind emulation:
+
+        return src.substring(1);
       }
     };
   }
 
   function parseCodeChunkToAST(src, options) {
-    // src = src
-    // .replace(/@/g, '\uFFDA')
-    // .replace(/#/g, '\uFFDB')
-    // ;
-    var ast = recast__default['default'].parse(src);
+    let s = options.mapper4JisonGrammarIdentifiers.encode(src, options.mapperErrorReporter);
+    let ast = recast__default['default'].parse(s);
     return ast;
   }
 
@@ -982,8 +922,6 @@
   }
 
   function prettyPrintAST(ast, options) {
-    var new_src;
-    var options = options || {};
     const defaultOptions = {
       tabWidth: 2,
       quote: 'single',
@@ -992,34 +930,19 @@
       // when printing generically.
       reuseWhitespace: false
     };
+    let s = recast__default['default'].prettyPrint(ast, defaultOptions);
+    let new_src = s.code;
+    new_src = new_src.replace(/\r\n|\n|\r/g, '\n'); // platform dependent EOL fixup
+    // backpatch possible jison variables extant in the prettified code:
 
-    for (var key in defaultOptions) {
-      if (options[key] === undefined) {
-        options[key] = defaultOptions[key];
-      }
-    }
-
-    var s = recast__default['default'].prettyPrint(ast, {
-      tabWidth: 2,
-      quote: 'single',
-      arrowParensAlways: true,
-      // Do not reuse whitespace (or anything else, for that matter)
-      // when printing generically.
-      reuseWhitespace: false
-    });
-    new_src = s.code;
-    new_src = new_src.replace(/\r\n|\n|\r/g, '\n') // platform dependent EOL fixup
-    // // backpatch possible jison variables extant in the prettified code:
-    // .replace(/\uFFDA/g, '@')
-    // .replace(/\uFFDB/g, '#')
-    ;
-    return new_src;
+    let dst = options.mapper4JisonGrammarIdentifiers.decode(new_src, options.mapperErrorReporter);
+    return dst;
   } // validate the given JISON+JavaScript snippet: does it compile?
   // 
   // Return either the parsed AST (object) or an error message (string). 
 
 
-  function checkActionBlock(src, yylloc) {
+  function checkActionBlock(src, yylloc, options) {
     // make sure reasonable line numbers, etc. are reported in any
     // potential parse errors by pushing the source code down:
     if (yylloc && yylloc.first_line > 0) {
@@ -1033,7 +956,7 @@
     }
 
     try {
-      var rv = parseCodeChunkToAST(src);
+      var rv = parseCodeChunkToAST(src, options);
       return false;
     } catch (ex) {
       return ex.message || "code snippet cannot be parsed";
