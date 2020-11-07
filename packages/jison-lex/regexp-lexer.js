@@ -199,7 +199,7 @@ function autodetectAndConvertToJSONformat(lexerSpec, options) {
             // // make sure all options are 'standardized' before we go and mix them together:
             // options = mkStdOptions(grammar.options, options);
             try {
-                chk_l = lexParser.parse(lexerSpec, options);
+                chk_l = lexParser.parse(lexerSpec);
             } catch (e) {
                 if (options.json) {
                     // When both JSON5 and JISON input modes barf a hairball, assume the most important
