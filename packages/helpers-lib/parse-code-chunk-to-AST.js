@@ -416,7 +416,7 @@ function generateMapper4JisonGrammarIdentifiers(input) {
         tokenDetect4EncodeRe: new XRegExp(`([^$@#${IN_ID_CHARSET}])([$@#]|##)(${ID_REGEX_BASE}|[$]|-?[0-9]+)(#?)(?![$${IN_ID_CHARSET}])`, 'g'),
 
         // combined regex for decoding direction
-        tokenDetect4DecodeRe: new XRegExp(`([^$${IN_ID_CHARSET}])([$]|${escChar}[${typeIdChar.slice(0,7).join('')}])(${ID_REGEX_BASE}|[$]|[0-9]+)(${escChar}${typeIdChar[1]}?)(?![$${IN_ID_CHARSET}])`, 'g'),
+        tokenDetect4DecodeRe: new XRegExp(`([^$${IN_ID_CHARSET}])([$]|${escChar}[${typeIdChar.slice(0,7).join('')}])(${ID_REGEX_BASE}|[$]|[0-9]+)((?:${escChar}${typeIdChar[1]})?)(?![$${IN_ID_CHARSET}])`, 'g'),
 
         encode: function encodeJisonTokens(src, locationOffsetSpec) {
             let re = this.tokenDetect4EncodeRe;
@@ -501,7 +501,7 @@ function generateMapper4JisonGrammarIdentifiers(input) {
 
         decode: function decodeJisonTokens(src, locationOffsetSpec) {
             let re = this.tokenDetect4DecodeRe;
-            console.error("RE:", re);
+            console.error("decodeJisonTokens RE:", re);
 
             // reset regex
             re.lastIndex = 0;            
@@ -519,7 +519,7 @@ function generateMapper4JisonGrammarIdentifiers(input) {
             // the input very precisely yet.
             src = src.replace(re, (m, p1, p2, p3, p4, offset) => {
                 // p1 is only serving as lookbehind emulation
-                console.error("match to process:", {m, p1, p2, p3, p4, offset});
+                console.error("decodeJisonTokens: match to process:", {m, p1, p2, p3, p4, offset});
                  
                 switch (p2) {
                 case this.tokenNegativeValueReferenceStart:
