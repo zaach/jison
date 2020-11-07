@@ -8,7 +8,7 @@ var mkIdentifier = helpers.mkIdentifier;
 
 import RegExpLexer from './regexp-lexer.js';
 
-var version = '0.6.5-218';                              // require('./package.json').version;
+var version = '0.6.5-222';                              // require('./package.json').version;
 
 
 function getCommandlineOptions() {
