@@ -2794,6 +2794,12 @@ function stripUnusedLexerCode(src, opt) {
     //   uses display APIs pastInput(), upcomingInput(), showPosition():
     //        ............................. ${opt.lexerActionsUseDisplayAPIs}
     //   uses describeYYLLOC() API: ....... ${opt.lexerActionsUseDescribeYYLOC}
+       
+    // HACK:
+    if (!opt.mapper4JisonGrammarIdentifiers) {
+        console.error("WARNING: auto-setup of jison Unicode ID mapper!");
+        opt.mapper4JisonGrammarIdentifiers = helpers.generateMapper4JisonGrammarIdentifiers(src);
+    }
 
     var ast = helpers.parseCodeChunkToAST(src, opt);
     var new_src = helpers.prettyPrintAST(ast, opt);

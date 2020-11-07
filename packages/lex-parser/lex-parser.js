@@ -1437,7 +1437,7 @@ case 16:
     
     var srcCode = trimActionCode(yyvstack[yysp - 1], yyvstack[yysp - 2]);
     if (srcCode) {
-        var rv = checkActionBlock(srcCode, yylstack[yysp - 1]);
+        var rv = checkActionBlock(srcCode, yylstack[yysp - 1], yy);
         if (rv) {
             yyparser.yyError(rmCommonWS`
                 The '%{...%}' lexer setup action code section does not compile: ${rv}
@@ -1697,7 +1697,7 @@ case 27:
     }
     
     var srcCode = trimActionCode(yyvstack[yysp - 2], yyvstack[yysp - 3]);
-    var rv = checkActionBlock(srcCode, yylstack[yysp - 2]);
+    var rv = checkActionBlock(srcCode, yylstack[yysp - 2], yy);
     if (rv) {
         yyparser.yyError(rmCommonWS`
             The '%code ${name}' initialization code section does not compile: ${rv}
@@ -1881,7 +1881,7 @@ case 40:
     
     var srcCode = trimActionCode(yyvstack[yysp - 1], yyvstack[yysp - 2]);
     if (srcCode) {
-        var rv = checkActionBlock(srcCode, yylstack[yysp - 1]);
+        var rv = checkActionBlock(srcCode, yylstack[yysp - 1], yy);
         if (rv) {
             yyparser.yyError(rmCommonWS`
                 The '%{...%}' lexer setup action code section does not compile: ${rv}
@@ -2150,7 +2150,7 @@ case 59:
     
     
     var srcCode = trimActionCode(yyvstack[yysp - 1], yyvstack[yysp - 2]);
-    var rv = checkActionBlock(srcCode, yylstack[yysp - 1]);
+    var rv = checkActionBlock(srcCode, yylstack[yysp - 1], yy);
     if (rv) {
         yyparser.yyError(rmCommonWS`
             The lexer rule's action code section does not compile: ${rv}
@@ -2188,7 +2188,7 @@ case 60:
         srcCode = 'return (' + srcCode + '\n)';
     }
     
-    var rv = checkActionBlock(srcCode, yylstack[yysp - 1]);
+    var rv = checkActionBlock(srcCode, yylstack[yysp - 1], yy);
     if (rv) {
         yyparser.yyError(rmCommonWS`
             The lexer rule's 'arrow' action code section does not compile: ${rv}
@@ -3081,7 +3081,7 @@ case 123:
     
     var srcCode = trimActionCode(yyvstack[yysp]);
     if (srcCode) {
-        var rv = checkActionBlock(srcCode, yylstack[yysp]);
+        var rv = checkActionBlock(srcCode, yylstack[yysp], yy);
         if (rv) {
             yyparser.yyError(rmCommonWS`
                 The '%%' lexer epilogue code does not compile: ${rv}
@@ -3156,7 +3156,7 @@ case 129:
     
     var srcCode = trimActionCode(yyvstack[yysp - 1], yyvstack[yysp - 2]);
     if (srcCode) {
-        var rv = checkActionBlock(srcCode, yylstack[yysp - 1]);
+        var rv = checkActionBlock(srcCode, yylstack[yysp - 1], yy);
         if (rv) {
             yyparser.yyError(rmCommonWS`
                 The '%{...%}' lexer epilogue code chunk does not compile: ${rv}
@@ -3251,7 +3251,7 @@ case 133:
     
     var srcCode = trimActionCode(fileContent);
     if (srcCode) {
-        var rv = checkActionBlock(srcCode, this._$);
+        var rv = checkActionBlock(srcCode, this._$, yy);
         if (rv) {
             yyparser.yyError(rmCommonWS`
                 The source code included from file '${path}' does not compile: ${rv}
@@ -9093,7 +9093,7 @@ EOF: 1,
       /*   8: */  /^(?:\/(?=\s))/,
       /*   9: */  /^(?:\/.*)/,
       /*  10: */  /^(?:"((?:\\"|\\[^"]|[^\n\r"\\])*)"|'((?:\\'|\\[^']|[^\n\r'\\])*)'|`((?:\\`|\\[^`]|[^\\`])*)`)/,
-      /*  11: */  /^(?:[^\n\r"%'\/`{}]+)/,
+      /*  11: */  /^(?:[^\n\r"%'/`{}]+)/,
       /*  12: */  /^(?:%)/,
       /*  13: */  /^(?:\{)/,
       /*  14: */  /^(?:\})/,
@@ -9118,7 +9118,7 @@ EOF: 1,
       /*  33: */  /^(?:,)/,
       /*  34: */  /^(?:\*)/,
       /*  35: */  new XRegExp('^(?:<([\\p{Alphabetic}_](?:[\\p{Alphabetic}\\p{Number}_])*)>)', ''),
-      /*  36: */  /^(?:([^\s!"$%'-,.\/:-?\[-\^`{-}])+)/,
+      /*  36: */  /^(?:([^\s!"$%'-,./:-?\[-\^`{-}])+)/,
       /*  37: */  /^(?:(\r\n|\n|\r)([^\S\n\r])+(?=\S))/,
       /*  38: */  /^(?:(\r\n|\n|\r))/,
       /*  39: */  /^(?:([^\S\n\r])+)/,
@@ -9130,7 +9130,7 @@ EOF: 1,
       /*  45: */  /^(?:"((?:\\"|\\[^"]|[^\n\r"\\])*)")/,
       /*  46: */  /^(?:'((?:\\'|\\[^']|[^\n\r'\\])*)')/,
       /*  47: */  /^(?:`((?:\\`|\\[^`]|[^\\`])*)`)/,
-      /*  48: */  /^(?:([^\s!"$%'-,.\/:-?\[-\^`{-}])+)/,
+      /*  48: */  /^(?:([^\s!"$%'-,./:-?\[-\^`{-}])+)/,
       /*  49: */  /^(?:\[)/,
       /*  50: */  /^(?:\|)/,
       /*  51: */  /^(?:\(\?:)/,
@@ -9150,7 +9150,7 @@ EOF: 1,
       /*  65: */  /^(?:>)/,
       /*  66: */  /^(?:\/!)/,
       /*  67: */  /^(?:\/)/,
-      /*  68: */  /^(?:\\(?:[BDPSWbdpsw]|[$(-+.\/?\[-\^fnrtv{-}]))/,
+      /*  68: */  /^(?:\\(?:[BDPSWbdpsw]|[$(-+./?\[-\^fnrtv{-}]))/,
       /*  69: */  /^(?:\\(?:([0-7]{1,3})|c([@-Z])|x([\dA-Fa-f]{2})|u([\dA-Fa-f]{4})|u\{([\dA-Fa-f]{1,8})\}))/,
       /*  70: */  /^(?:\\.)/,
       /*  71: */  /^(?:\$)/,
