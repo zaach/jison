@@ -38,7 +38,7 @@ export default function rmCommonWS(strings, ...values) {
                 var m = /^(\s*)\S/.exec(line);
                 // only non-empty ~ content-carrying lines matter re common indent calculus:
                 if (m) {
-                    if (!indent_str) {
+                    if (indent_str == null) {
                         indent_str = m[1];
                     } else if (m[1].length < indent_str.length) {
                         indent_str = m[1];
