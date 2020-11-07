@@ -373,15 +373,35 @@ yyerror(rmCommonWS\`
     assert.deepEqual(cvt, source);
   });
 
+  // auto-init the Unicode mapper:
+  var mapper;
+  function autoInitUnicodeMapper() {
+    return {
+      encode: function (source) {
+        if (!mapper) {
+          mapper = helpers.generateMapper4JisonGrammarIdentifiers(source);
+        }
+        return mapper.encode(source);
+      },
+      decode: function (source) {
+        return mapper.decode(source);
+      }
+    }
+  }
+  
   it("parseCodeChunkToAST + prettyPrintAST", function () {
     var rmCommonWS = helpers.rmCommonWS;
+
+    var options = { 
+      mapper4JisonGrammarIdentifiers: autoInitUnicodeMapper() 
+    };
 
     var ast = helpers.parseCodeChunkToAST(`
         for (var i = 0, len = 10; i < len; i++) {
             console.log(i);
         }
-    `);
-    var rv = helpers.prettyPrintAST(ast);
+    `, options);
+    var rv = helpers.prettyPrintAST(ast, options);
     var sollwert_src = rmCommonWS`
         for (var i = 0, len = 10; i < len; i++) {
           console.log(i);
@@ -393,29 +413,11 @@ yyerror(rmCommonWS\`
   it("parseCodeChunkToAST + prettyPrintAST backticked code snippets with Unicode variable", function () {
     var rmCommonWS = helpers.rmCommonWS;
 
-    var ast = helpers.parseCodeChunkToAST(`
-yyerror(rmCommonWS\`
-            There's probably an error in one or more of your lexer regex rules.
-            The lexer rule spec should have this structure:
+    var options = { 
+      mapper4JisonGrammarIdentifiers: autoInitUnicodeMapper() 
+    };
 
-                    regex  action_code
-
-            where 'regex' is a lex-style regex expression (see the
-            jison and jison-lex documentation) which is intended to match a chunk
-            of the input to lex, while the 'action_code' block is the JS code
-            which will be invoked when the regex is matched. The 'action_code' block
-            may be any (indented!) set of JS statements, optionally surrounded
-            by '{...}' curly braces or otherwise enclosed in a '%{...%}' block.
-
-              Erroneous code:
-            $\{yylexer.prettyPrintRange(ဩerror)}
-
-              Technical error report:
-            $\{$error.errStr}
-        \`);
-    `);
-    var rv = helpers.prettyPrintAST(ast);
-    var sollwert_src = rmCommonWS`
+    let src = rmCommonWS`
 yyerror(rmCommonWS\`
             There's probably an error in one or more of your lexer regex rules.
             The lexer rule spec should have this structure:
@@ -436,6 +438,10 @@ yyerror(rmCommonWS\`
             $\{$error.errStr}
         \`);
     `;
+
+    var ast = helpers.parseCodeChunkToAST(src, options);
+    var rv = helpers.prettyPrintAST(ast, options);
+    var sollwert_src = src;
     assert.strictEqual(rv, sollwert_src.trim());
   });
 
@@ -443,7 +449,11 @@ yyerror(rmCommonWS\`
   it("parseCodeChunkToAST must parse valid jison action code correctly (or your babel/recast version(s) will be boogered!)", function () {
     var rmCommonWS = helpers.rmCommonWS;
 
-    var ast = helpers.parseCodeChunkToAST(`
+    var options = { 
+      mapper4JisonGrammarIdentifiers: autoInitUnicodeMapper() 
+    };
+
+    let src = rmCommonWS`
 yyerror(rmCommonWS\`
             There's probably an error in one or more of your lexer regex rules.
             The lexer rule spec should have this structure:
@@ -463,29 +473,11 @@ yyerror(rmCommonWS\`
               Technical error report:
             $\{$error.errStr}
         \`);
-    `);
-    var rv = helpers.prettyPrintAST(ast);
-    var sollwert_src = rmCommonWS`
-yyerror(rmCommonWS\`
-            There's probably an error in one or more of your lexer regex rules.
-            The lexer rule spec should have this structure:
+    `;;
 
-                    regex  action_code
-
-            where 'regex' is a lex-style regex expression (see the
-            jison and jison-lex documentation) which is intended to match a chunk
-            of the input to lex, while the 'action_code' block is the JS code
-            which will be invoked when the regex is matched. The 'action_code' block
-            may be any (indented!) set of JS statements, optionally surrounded
-            by '{...}' curly braces or otherwise enclosed in a '%{...%}' block.
-
-              Erroneous code:
-            $\{yylexer.prettyPrintRange(@error)}
-
-              Technical error report:
-            $\{$error.errStr}
-        \`);
-    `;
+    var ast = helpers.parseCodeChunkToAST(src, options);
+    var rv = helpers.prettyPrintAST(ast, options);
+    var sollwert_src = src;
     assert.strictEqual(rv.replace(/\s+/g, ' '), sollwert_src.trim().replace(/\s+/g, ' '));
   });
 
