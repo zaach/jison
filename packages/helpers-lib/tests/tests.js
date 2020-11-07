@@ -278,21 +278,20 @@ yyerror(rmCommonWS\`
     assert.equal(typeof g.decode, 'function');
     assert.equal(typeof g.encode, 'function');
     assert.deepEqual(g.tokenDirectIdentifierStart, 'ဩᐁ');
-    assert.deepEqual(g.tokenDirectIdentifierEnd, 'ဩᐯ');
     assert.ok(matchIdRegexBase(g.tokenDirectIdentifierRe));
     assert.deepEqual(g.tokenValueReferenceStart, '$');
     assert.ok(matchIdRegexBase(g.tokenValueReferenceRe));
-    assert.deepEqual(g.tokenLocationStart, 'ဩᒣ');
+    assert.deepEqual(g.tokenLocationStart, 'ဩᑌ');
     assert.ok(matchIdRegexBase(g.tokenLocationRe));
-    assert.deepEqual(g.tokenIdentifierStart, 'ဩᑌ');
+    assert.deepEqual(g.tokenIdentifierStart, 'ဩᑫ');
     assert.ok(matchIdRegexBase(g.tokenIdentifierRe));
-    assert.deepEqual(g.tokenStackIndexStart, 'ဩᑫ');
+    assert.deepEqual(g.tokenStackIndexStart, 'ဩᔦ');
     assert.ok(matchIdRegexBase(g.tokenStackIndexRe));
-    assert.deepEqual(g.tokenNegativeValueReferenceStart, 'ဩᓭ');
+    assert.deepEqual(g.tokenNegativeValueReferenceStart, 'ဩᗜ');
     assert.ok(matchIdRegexBase(g.tokenValueReferenceRe));
-    assert.deepEqual(g.tokenNegativeLocationStart, 'ဩᓓ');
+    assert.deepEqual(g.tokenNegativeLocationStart, 'ဩᘔ');
     assert.ok(matchIdRegexBase(g.tokenNegativeLocationRe));
-    assert.deepEqual(g.tokenNegativeStackIndexStart, 'ဩᒉ');
+    assert.deepEqual(g.tokenNegativeStackIndexStart, 'ဩᗄ');
     assert.ok(matchIdRegexBase(g.tokenNegativeStackIndexRe));
     assert.ok(matchGeneralIdRe(g.tokenDetect4EncodeRe));
     assert.ok(matchGeneralIdRe(g.tokenDetect4DecodeRe));
@@ -300,7 +299,7 @@ yyerror(rmCommonWS\`
 
   it("generateMapper4JisonGrammarIdentifiers(input) picks a reasonable set of escapes to use when confronted with Unicode collisions in the input", () => {
     let source = fs.readFileSync(__dirname + '/../../ebnf-parser/bnf.y', 'utf8');
-    console.error("BNFY:", source);
+
     source = source
     .replace(/@/g, rmAllWS('ဩ ℹ ᐁ ᐯ ᑌ ᑍ ᑎ ᑏ ᔦ ᔧ ᔨ ᔩ ᔪ ᔫ ᔬ ᔭ ᔮ'))
     .replace(/$$/g, rmAllWS('ℹ'))
@@ -326,27 +325,41 @@ yyerror(rmCommonWS\`
     assert.equal(typeof g.decode, 'function');
     assert.equal(typeof g.encode, 'function');
     assert.deepEqual(g.tokenDirectIdentifierStart, 'Ϟᐒ');
-    assert.deepEqual(g.tokenDirectIdentifierEnd, 'Ϟᐰ');
     assert.ok(matchIdRegexBase(g.tokenDirectIdentifierRe));
     assert.deepEqual(g.tokenValueReferenceStart, '$');
     assert.ok(matchIdRegexBase(g.tokenValueReferenceRe));
-    assert.deepEqual(g.tokenLocationStart, 'Ϟᒣ');
+    assert.deepEqual(g.tokenLocationStart, 'Ϟᑐ');
     assert.ok(matchIdRegexBase(g.tokenLocationRe));
-    assert.deepEqual(g.tokenIdentifierStart, 'Ϟᑐ');
+    assert.deepEqual(g.tokenIdentifierStart, 'Ϟᑫ');
     assert.ok(matchIdRegexBase(g.tokenIdentifierRe));
-    assert.deepEqual(g.tokenStackIndexStart, 'Ϟᑫ');
+    assert.deepEqual(g.tokenStackIndexStart, 'Ϟᔯ');
     assert.ok(matchIdRegexBase(g.tokenStackIndexRe));
-    assert.deepEqual(g.tokenNegativeValueReferenceStart, 'Ϟᓭ');
+    assert.deepEqual(g.tokenNegativeValueReferenceStart, 'Ϟᗜ');
     assert.ok(matchIdRegexBase(g.tokenValueReferenceRe));
-    assert.deepEqual(g.tokenNegativeLocationStart, 'Ϟᓓ');
+    assert.deepEqual(g.tokenNegativeLocationStart, 'Ϟᘔ');
     assert.ok(matchIdRegexBase(g.tokenNegativeLocationRe));
-    assert.deepEqual(g.tokenNegativeStackIndexStart, 'Ϟᒉ');
+    assert.deepEqual(g.tokenNegativeStackIndexStart, 'Ϟᗄ');
     assert.ok(matchIdRegexBase(g.tokenNegativeStackIndexRe));
     assert.ok(matchGeneralIdRe(g.tokenDetect4EncodeRe));
     assert.ok(matchGeneralIdRe(g.tokenDetect4DecodeRe));
   });
 
-  it("generateMapper4JisonGrammarIdentifiers(input) properly encodes jison variables", () => {
+  it("generateMapper4JisonGrammarIdentifiers(input) properly encodes and decodes jison variables (1)", () => {
+    let source = fs.readFileSync(__dirname + '/fixtures/Mapper4JisonGrammarIdentifiers.sample.txt', 'utf8');
+    let g = helpers.generateMapper4JisonGrammarIdentifiers(source);
+
+    assert.ok(g);
+    assert.equal(typeof g, 'object');
+    assert.equal(typeof g.decode, 'function');
+    assert.equal(typeof g.encode, 'function');
+
+    let im = g.encode(source);
+    assert.notEqual(im, source);
+    let cvt = g.decode(im);
+    assert.deepEqual(cvt, source);
+  });
+
+  xit("generateMapper4JisonGrammarIdentifiers(input) properly encodes and decodes jison variables (2)", () => {
     let source = fs.readFileSync(__dirname + '/../../ebnf-parser/bnf.y', 'utf8');
     let g = helpers.generateMapper4JisonGrammarIdentifiers(source);
 
@@ -356,9 +369,7 @@ yyerror(rmCommonWS\`
     assert.equal(typeof g.encode, 'function');
 
     let im = g.encode(source);
-    console.error("Intermediate:", im);
     let cvt = g.decode(im);
-    console.error("Final:", cvt);
     assert.deepEqual(cvt, source);
   });
 
