@@ -1,0 +1,31 @@
+{
+  "name": "install-tester",
+  "version": "0.1.0-200",
+  "description": "Test jison install using NPM",
+  "keywords": [
+    "jison",
+    "json",
+    "grammar",
+    "parser",
+    "generator"
+  ],
+  "author": {
+    "name": "Ger Hobbelt",
+    "email": "ger@hobbelt.com",
+    "url": "http://hobbelt.com"
+  },
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/GerHobbelt/jison.git"
+  },
+  "engines": {
+    "node": ">=4.0"
+  },
+  "scripts": {
+    "test": "make"
+  },
+  "dependencies": {
+    "jison-gho": "0.6.1-200"
+  }
+}

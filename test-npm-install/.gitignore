@@ -1,0 +1,17 @@
+## Dependency directory
+## Commenting this out is preferred by some people, see
+## https://docs.npmjs.com/misc/faq#should-i-check-my-node_modules-folder-into-git
+node_modules/
+
+# test output
+calculator.js
+
+# Apple Crap
+.DS_Store
+
+# more npm dung
+npm-debug.log
+
+# Editor backup files
+*.bak
+*~

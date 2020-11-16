@@ -1,0 +1,215 @@
+[
+  13,
+  {
+    id: 21,
+    token: '"ACTION_START_AT_SOL"',
+    yytext: '%{',
+    yylloc: {
+      first_line: 1,
+      first_column: 0,
+      last_line: 1,
+      last_column: 0,
+      range: [
+        0,
+        0,
+      ],
+    },
+  },
+  {
+    id: 53,
+    token: '"ACTION_BODY"',
+    yytext: 'test;',
+    yylloc: {
+      first_line: 1,
+      first_column: 0,
+      last_line: 1,
+      last_column: 9,
+      range: [
+        0,
+        9,
+      ],
+    },
+  },
+  {
+    id: 22,
+    token: '"ACTION_END"',
+    yytext: '',
+    yylloc: {
+      first_line: 1,
+      first_column: 9,
+      last_line: 1,
+      last_column: 9,
+      range: [
+        9,
+        9,
+      ],
+    },
+  },
+  {
+    id: 13,
+    token: '"%%"',
+    yytext: '%%',
+    yylloc: {
+      first_line: 2,
+      first_column: 0,
+      last_line: 2,
+      last_column: 2,
+      range: [
+        10,
+        12,
+      ],
+    },
+  },
+  {
+    id: 16,
+    token: '"ID"',
+    yytext: 'hello',
+    yylloc: {
+      first_line: 2,
+      first_column: 2,
+      last_line: 2,
+      last_column: 7,
+      range: [
+        12,
+        17,
+      ],
+    },
+  },
+  {
+    id: 3,
+    token: '":"',
+    yytext: ':',
+    yylloc: {
+      first_line: 2,
+      first_column: 7,
+      last_line: 2,
+      last_column: 8,
+      range: [
+        17,
+        18,
+      ],
+    },
+  },
+  {
+    id: 16,
+    token: '"ID"',
+    yytext: 'world',
+    yylloc: {
+      first_line: 2,
+      first_column: 9,
+      last_line: 2,
+      last_column: 14,
+      range: [
+        19,
+        24,
+      ],
+    },
+  },
+  {
+    id: 4,
+    token: '";"',
+    yytext: ';',
+    yylloc: {
+      first_line: 2,
+      first_column: 14,
+      last_line: 2,
+      last_column: 15,
+      range: [
+        24,
+        25,
+      ],
+    },
+  },
+  {
+    id: 13,
+    token: '"%%"',
+    yytext: '%%',
+    yylloc: {
+      first_line: 2,
+      first_column: 15,
+      last_line: 2,
+      last_column: 17,
+      range: [
+        25,
+        27,
+      ],
+    },
+  },
+  {
+    id: 60,
+    token: '"TRAILING_CODE_CHUNK"',
+    yytext: `var foo = 'bar';
+
+`,
+    yylloc: {
+      first_line: 2,
+      first_column: 17,
+      last_line: 4,
+      last_column: 0,
+      range: [
+        27,
+        45,
+      ],
+    },
+  },
+  {
+    id: 1,
+    token: 'end of input',
+    yytext: '',
+    yylloc: {
+      first_line: 4,
+      first_column: 0,
+      last_line: 4,
+      last_column: 0,
+      range: [
+        45,
+        45,
+      ],
+    },
+  },
+  {
+    id: 1,
+    token: 'end of input',
+    yytext: '',
+    yylloc: {
+      first_line: 4,
+      first_column: 0,
+      last_line: 4,
+      last_column: 0,
+      range: [
+        45,
+        45,
+      ],
+    },
+  },
+  {
+    id: 1,
+    token: 'end of input',
+    yytext: '',
+    yylloc: {
+      first_line: 4,
+      first_column: 0,
+      last_line: 4,
+      last_column: 0,
+      range: [
+        45,
+        45,
+      ],
+    },
+  },
+  {
+    id: 1,
+    token: 'end of input',
+    yytext: '',
+    yylloc: {
+      first_line: 4,
+      first_column: 0,
+      last_line: 4,
+      last_column: 0,
+      range: [
+        45,
+        45,
+      ],
+    },
+  },
+]

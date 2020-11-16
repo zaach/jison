@@ -1,0 +1,21 @@
+.DS_Store
+node_modules/
+npm-debug.log
+
+# Editor backup files
+*.bak
+*~
+
+# scratch space
+/tmp/
+
+# Ignore build/publish scripts, etc.
+Makefile
+
+# misc files which are used during development
+__patch_*.js
+
+# istanbul / nyc code coverage analysis workspaces
+/.nyc_output
+/coverage
+

@@ -1,0 +1,11 @@
+# GitBook ignores, on top of .gitignore
+#
+
+node_modules/
+vagrant/
+tmp/
+
+modules/
+
+examples/output/
+examples/output*/

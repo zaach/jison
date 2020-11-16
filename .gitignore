@@ -1,7 +1,84 @@
-.DS_Store
+## WARNING ## WARNING ## WARNING ## WARNING ## WARNING
+##
+## Looks like npm (and git?) has a bug on Windows where the fnmatch pattern with trailing slash, e.g. `output/`
+## doesn't work for subdirectories, while the same pattern *without* the trailing slash *does* work for
+## filtering directories (behaviour like `**/tmp/` but git and npm supports a different set of glob patterns)
+##
+## Commandline to observe this behaviour (on Windows dev box):
+##
+##     npm pack && tar ftv *.tgz | grep tests
+##
+## Edit the ignore file to edit the `tests` line further below with or without trailing `/` to observe the 
+## buggy behaviour.
+##
+## WARNING ## WARNING ## WARNING ## WARNING ## WARNING
+
+## Dependency directory
+## Commenting this out is preferred by some people, see
+## https://docs.npmjs.com/misc/faq#should-i-check-my-node_modules-folder-into-git
 node_modules
+
+## Google Closure Compiler install directory
+gcc/
+
+## Book build output
+#_book
+
+## eBook build output
+#*.epub
+#*.mobi
+#*.pdf
+
+# Apple Crap
+.DS_Store
+
+# more npm dung
+npm-debug.log
+*.tgz
 
 # Editor backup files
 *.bak
 *~
-web/content/assets/js/jison.js
+*.xxx
+
+# Generated web content directories (nanoc output)
+web/tmp
+web/crash.log
+
+# ignore the compiler output for any examples:            
+examples/output
+docs/examples/reference-output
+packages/**/examples/output
+docs/**/examples/output
+
+# Vagrant sandbox
+vagrant
+Vagrantfile
+
+# scratch space
+#tmp/
+#---^ see WARNING at the top of this file!
+tmp
+tmp2
+/book-using-jison-beyond-the-basics/base-materials
+*.log
+*.patch
+
+# istanbul / nyc code coverage analysis workspaces
+.nyc_output
+# ignore all coverage report directories anywhere
+coverage
+
+# additional crap thast shouldn't land in git repo or npm:
+tmp*
+/test*.*
+/issue*.*
+/dump*
+/*bug*
+/examples/formula-v*
+/docs/examples/formula-v*
+profile*.txt
+/include.lex
+
+
+

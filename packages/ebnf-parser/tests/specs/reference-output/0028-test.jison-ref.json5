@@ -1,0 +1,27 @@
+{
+  bnf: {
+    hello: [
+      [
+        [
+          'symbol',
+          'world',
+        ],
+      ],
+    ],
+  },
+  grammar: {
+    hello: [
+      [
+        [
+          'symbol',
+          'world',
+        ],
+      ],
+    ],
+  },
+  moduleInclude: "var foo = 'bar'",
+  __original_input__: `%{test;%}
+%%hello: world;%%var foo = 'bar';
+
+`,
+}

@@ -1,0 +1,32 @@
+*.bat           text eol=crlf
+*.css           text eol=lf
+*.ejs           text eol=lf
+*.html          text eol=lf
+*.inc           text eol=lf
+*.ini           text eol=lf
+*.jison         text eol=lf
+*.jisonlex      text eol=lf
+*.js            text eol=lf
+*.json          text eol=lf
+*.json5         text eol=lf
+*.l             text eol=lf
+*.less          text eol=lf
+*.lex           text eol=lf
+*.markdown      text eol=lf
+*.md            text eol=lf
+*.php           text eol=lf
+*.sass          text eol=lf
+*.sed           text eol=lf
+*.sh            text eol=lf
+*.src           text eol=lf
+*.txt           text eol=lf
+*.xml           text eol=lf
+*.y             text eol=lf
+*.yacc          text eol=lf
+*.yaml          text eol=lf
+*.yml           text eol=lf
+
+*.pdf			binary
+*.psd			binary
+*.pptx			binary
+*.xlsx			binary

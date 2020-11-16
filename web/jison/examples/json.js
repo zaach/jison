@@ -25,15 +25,15 @@ exports.grammar = {
                     return "STRING";
                 }
             }],
-            ["\\{", "return '{'"],
-            ["\\}", "return '}'"],
-            ["\\[", "return '['"],
-            ["\\]", "return ']'"],
-            [",", "return ','"],
-            [":", "return ':'"],
-            ["true\\b", "return 'TRUE'"],
-            ["false\\b", "return 'FALSE'"],
-            ["null\\b", "return 'NULL'"]
+            ["\\{", "return '{';"],
+            ["\\}", "return '}';"],
+            ["\\[", "return '[';"],
+            ["\\]", "return ']';"],
+            [",", "return ',';"],
+            [":", "return ':';"],
+            ["true\\b", "return 'TRUE';"],
+            ["false\\b", "return 'FALSE';"],
+            ["null\\b", "return 'NULL';"]
         ]
     },
 

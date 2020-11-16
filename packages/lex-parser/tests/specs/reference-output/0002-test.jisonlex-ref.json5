@@ -1,0 +1,29 @@
+{
+  rules: [
+    [
+      '[{D}]ohhai',
+      'print(9)',
+    ],
+    [
+      '\\{',
+      "return '{'",
+    ],
+  ],
+  macros: {
+    D: '[0-9]',
+    L: '[a-zA-Z]',
+    ID: '[{L}_][{L}{D}_]+',
+  },
+  startConditions: {},
+  codeSections: [],
+  importDecls: [],
+  unknownDecls: [],
+  __original_input__: `D [0-9]
+L [a-zA-Z]
+ID [{L}_][{L}{D}_]+
+%%
+[{D}]"ohhai" {print(9);}
+"{" return '{';
+
+`,
+}

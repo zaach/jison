@@ -1,0 +1,17 @@
+{
+  rules: [
+    [
+      `'([^\\\\']+|\\\\(\\n|.))*?'`,
+      'return 1',
+    ],
+  ],
+  macros: {},
+  startConditions: {},
+  codeSections: [],
+  importDecls: [],
+  unknownDecls: [],
+  __original_input__: `%%
+\\'([^\\\\']+|\\\\(\\n|.))*?\\' return 1;
+
+`,
+}

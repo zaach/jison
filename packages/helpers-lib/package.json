@@ -1,0 +1,45 @@
+{
+  "name": "jison-helpers-lib",
+  "version": "0.6.5-222",
+  "description": "Helper functions shared among the jison repositories (jison, ebnf-parser, lex-parser, jison-lex)",
+  "main": "dist/helpers-lib-cjs-es5.js",
+  "module": "index.js",
+  "scripts": {
+    "test": "make test",
+    "pub": "npm publish --access public"
+  },
+  "keywords": [
+    "jison",
+    "json",
+    "grammar",
+    "parser",
+    "generator"
+  ],
+  "repository": {
+    "type": "git",
+    "url": "git://github.com/GerHobbelt/jison-helpers-lib.git"
+  },
+  "author": {
+    "name": "Ger Hobbelt",
+    "email": "ger@hobbelt.com",
+    "url": "http://hobbelt.com"
+  },
+  "license": "MIT",
+  "engines": {
+    "node": ">=8.0"
+  },
+  "dependencies": {
+    "ast-util": "0.6.0",
+    "recast": "0.18.5",
+    "@gerhobbelt/xregexp": "0.0.1"
+  },
+  "devDependencies": {
+    "@babel/cli": "7.7.0",
+    "@babel/preset-env": "7.7.1",
+    "babel-preset-modern-browsers": "14.0.0",
+    "chai": "4.2.0",
+    "mocha": "6.2.2",
+    "rollup-plugin-node-resolve": "5.2.0",
+    "rollup": "1.27.2"
+  }
+}

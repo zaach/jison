@@ -1,0 +1,102 @@
+{
+  rules: [
+    [
+      'enter-test\\b',
+      "this.begin('TEST')",
+    ],
+    [
+      'enter_test\\b',
+      "this.begin('TEST')",
+    ],
+    [
+      [
+        'TEST',
+        'EAT',
+      ],
+      'x\\b',
+      "return 'T'",
+    ],
+    [
+      [
+        '*',
+      ],
+      'z\\b',
+      "return 'Z'",
+    ],
+    [
+      [
+        'TEST',
+      ],
+      'y\\b',
+      `this.begin('INITIAL'); return 'TY'`,
+    ],
+    [
+      '"\'a\\b',
+      'return 1',
+    ],
+    [
+      '"\'\\\\\\*i\\b',
+      'return 1',
+    ],
+    [
+      'a\\b',
+      'return 2',
+    ],
+    [
+      '\\u0001',
+      '',
+    ],
+    [
+      '\\n',
+      '',
+    ],
+    [
+      'ÿ',
+      '',
+    ],
+    [
+      '\\[[^\\\\]\\]',
+      'return true',
+    ],
+    [
+      'f"oo\'bar\\b',
+      "return 'baz2'",
+    ],
+    [
+      'fo"obar\\b',
+      "return 'baz'",
+    ],
+  ],
+  macros: {},
+  startConditions: {
+    TEST: 0,
+    TEST2: 0,
+    EAT: 1,
+  },
+  codeSections: [],
+  importDecls: [],
+  unknownDecls: [],
+  options: {
+    easy_keyword_rules: true,
+  },
+  __original_input__: `%options easy_keyword_rules
+%s TEST TEST2
+%x EAT
+%%
+"enter-test" {this.begin('TEST');}
+"enter_test" {this.begin('TEST');}
+<TEST,EAT>"x" {return 'T';}
+<*>"z" {return 'Z';}
+<TEST>"y" {this.begin('INITIAL'); return 'TY';}
+\\"\\'"a" return 1;
+\\"\\'\\\\\\*\\i return 1;
+"a"\\b return 2;
+\\cA {}
+\\012 {}
+\\xFF {}
+"["[^\\\\]"]" {return true;}
+'f"oo\\'bar'  {return 'baz2';}
+"fo\\"obar"  {return 'baz';}
+
+`,
+}

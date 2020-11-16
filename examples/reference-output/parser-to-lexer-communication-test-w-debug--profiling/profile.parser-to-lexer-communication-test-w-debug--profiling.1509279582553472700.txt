@@ -1,0 +1,37 @@
+Statistical profiling result from isolate-0000020FBEAEAC10-v8.log, (5113 ticks, 2017 unaccounted, 0 excluded).
+
+ [Shared libraries]:
+   ticks  total  nonlib   name
+     84    1.6%          C:\Program Files\nodejs\node.exe
+
+ [JavaScript]:
+   ticks  total  nonlib   name
+     31    0.6%    0.6%  Function: ~log console.js:103:37
+      1    0.0%    0.0%  RegExp: ^(?:.)
+      1    0.0%    0.0%  RegExp: \\bTIMER\\b
+      1    0.0%    0.0%  RegExp: \\bSTREAM\\b
+      1    0.0%    0.0%  RegExp: \\bMODULE\\b
+
+ [C++]:
+   ticks  total  nonlib   name
+
+ [Summary]:
+   ticks  total  nonlib   name
+     35    0.7%    0.7%  JavaScript
+      0    0.0%    0.0%  C++
+   1270   24.8%   25.3%  GC
+     84    1.6%          Shared libraries
+   2017   39.4%          Unaccounted
+
+ [C++ entry points]:
+   ticks    cpp   total   name
+
+ [Bottom up (heavy) profile]:
+  Note: percentage shows a share of a particular caller in the total
+  amount of its parent calls.
+  Callers occupying less than 2.0% are not shown.
+
+   ticks parent  name
+   2017   39.4%  UNKNOWN
+    635   31.5%    C:\Program Files\nodejs\node.exe
+

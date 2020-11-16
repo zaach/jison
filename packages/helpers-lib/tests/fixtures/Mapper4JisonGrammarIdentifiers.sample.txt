@@ -1,0 +1,51 @@
+
+// raw strings
+import XRegExp from '@gerhobbelt/xregexp';        // for helping out the `%options xregexp` in the lexer
+import JSON5 from '@gerhobbelt/json5';            // TODO: quick fix until `%code imports` works in the lexer spec!
+
+%token NAME_BRACE  "macro name in '{...}' curly braces"
+
+%ebnf
+
+lex
+    : init definitions rules_and_epilogue EOF
+        {
+          $$ = $rules_and_epilogue;
+          $$ += #EOF#;
+          $$ += #rules_and_epilogue;
+          $$ += ##init;
+          $$ += ##-2;
+          $$ += ##ZEN;
+          $$ += @-3;
+          $$ += $-1;
+          $$ += @5;
+          $$ += #6;
+          $$ += $7;
+          $$ += #42#;
+
+          yyerror(rmCommonWS`
+              Erroneous code:
+            ${yylexer.prettyPrintRange(@error)}
+
+              Technical error report:
+            ${$error.errStr}
+        `);
+
+        var name = @definitions[i];
+        if (name in $$.startConditions) {
+            yyerror(rmCommonWS`
+                  Erroneous code:
+                ${yylexer.prettyPrintRange(@definitions, @1)}
+
+                  Id:
+                ${#init}
+            `);
+        }
+      }
+    | ε
+      /* Note: an empty rules set is allowed when you are setting up an `%options custom_lexer` */
+      {
+        $$ = { rules: [] };
+      }
+    ;
+

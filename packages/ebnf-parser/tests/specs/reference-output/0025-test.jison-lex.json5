@@ -1,0 +1,543 @@
+[
+  35,
+  {
+    id: 13,
+    token: '"%%"',
+    yytext: '%%',
+    yylloc: {
+      first_line: 1,
+      first_column: 0,
+      last_line: 1,
+      last_column: 2,
+      range: [
+        0,
+        2,
+      ],
+    },
+  },
+  {
+    id: 16,
+    token: '"ID"',
+    yytext: 'test',
+    yylloc: {
+      first_line: 1,
+      first_column: 3,
+      last_line: 1,
+      last_column: 7,
+      range: [
+        3,
+        7,
+      ],
+    },
+  },
+  {
+    id: 3,
+    token: '":"',
+    yytext: ':',
+    yylloc: {
+      first_line: 1,
+      first_column: 7,
+      last_line: 1,
+      last_column: 8,
+      range: [
+        7,
+        8,
+      ],
+    },
+  },
+  {
+    id: 16,
+    token: '"ID"',
+    yytext: 'foo',
+    yylloc: {
+      first_line: 1,
+      first_column: 9,
+      last_line: 1,
+      last_column: 12,
+      range: [
+        9,
+        12,
+      ],
+    },
+  },
+  {
+    id: 16,
+    token: '"ID"',
+    yytext: 'bar',
+    yylloc: {
+      first_line: 1,
+      first_column: 13,
+      last_line: 1,
+      last_column: 16,
+      range: [
+        13,
+        16,
+      ],
+    },
+  },
+  {
+    id: 24,
+    token: '"ACTION_START"',
+    yytext: '{',
+    yylloc: {
+      first_line: 1,
+      first_column: 17,
+      last_line: 1,
+      last_column: 17,
+      range: [
+        17,
+        17,
+      ],
+    },
+  },
+  {
+    id: 53,
+    token: '"ACTION_BODY"',
+    yytext: '{',
+    yylloc: {
+      first_line: 1,
+      first_column: 17,
+      last_line: 1,
+      last_column: 18,
+      range: [
+        17,
+        18,
+      ],
+    },
+  },
+  {
+    id: 53,
+    token: '"ACTION_BODY"',
+    yytext: ' node(',
+    yylloc: {
+      first_line: 1,
+      first_column: 18,
+      last_line: 1,
+      last_column: 24,
+      range: [
+        18,
+        24,
+      ],
+    },
+  },
+  {
+    id: 53,
+    token: '"ACTION_BODY"',
+    yytext: '{',
+    yylloc: {
+      first_line: 1,
+      first_column: 24,
+      last_line: 1,
+      last_column: 25,
+      range: [
+        24,
+        25,
+      ],
+    },
+  },
+  {
+    id: 53,
+    token: '"ACTION_BODY"',
+    yytext: '}',
+    yylloc: {
+      first_line: 1,
+      first_column: 25,
+      last_line: 1,
+      last_column: 26,
+      range: [
+        25,
+        26,
+      ],
+    },
+  },
+  {
+    id: 53,
+    token: '"ACTION_BODY"',
+    yytext: ', 3 ',
+    yylloc: {
+      first_line: 1,
+      first_column: 26,
+      last_line: 1,
+      last_column: 30,
+      range: [
+        26,
+        30,
+      ],
+    },
+  },
+  {
+    id: 53,
+    token: '"ACTION_BODY"',
+    yytext: '/',
+    yylloc: {
+      first_line: 1,
+      first_column: 30,
+      last_line: 1,
+      last_column: 31,
+      range: [
+        30,
+        31,
+      ],
+    },
+  },
+  {
+    id: 53,
+    token: '"ACTION_BODY"',
+    yytext: ' 4, ',
+    yylloc: {
+      first_line: 1,
+      first_column: 31,
+      last_line: 1,
+      last_column: 35,
+      range: [
+        31,
+        35,
+      ],
+    },
+  },
+  {
+    id: 53,
+    token: '"ACTION_BODY"',
+    yytext: '"{"',
+    yylloc: {
+      first_line: 1,
+      first_column: 35,
+      last_line: 1,
+      last_column: 38,
+      range: [
+        35,
+        38,
+      ],
+    },
+  },
+  {
+    id: 53,
+    token: '"ACTION_BODY"',
+    yytext: '); ',
+    yylloc: {
+      first_line: 1,
+      first_column: 38,
+      last_line: 1,
+      last_column: 41,
+      range: [
+        38,
+        41,
+      ],
+    },
+  },
+  {
+    id: 53,
+    token: '"ACTION_BODY"',
+    yytext: '/{\'"/',
+    yylloc: {
+      first_line: 1,
+      first_column: 41,
+      last_line: 1,
+      last_column: 46,
+      range: [
+        41,
+        46,
+      ],
+    },
+  },
+  {
+    id: 53,
+    token: '"ACTION_BODY"',
+    yytext: 'g; 1 ',
+    yylloc: {
+      first_line: 1,
+      first_column: 46,
+      last_line: 1,
+      last_column: 51,
+      range: [
+        46,
+        51,
+      ],
+    },
+  },
+  {
+    id: 53,
+    token: '"ACTION_BODY"',
+    yytext: '/',
+    yylloc: {
+      first_line: 1,
+      first_column: 51,
+      last_line: 1,
+      last_column: 52,
+      range: [
+        51,
+        52,
+      ],
+    },
+  },
+  {
+    id: 53,
+    token: '"ACTION_BODY"',
+    yytext: ' 2; ',
+    yylloc: {
+      first_line: 1,
+      first_column: 52,
+      last_line: 1,
+      last_column: 56,
+      range: [
+        52,
+        56,
+      ],
+    },
+  },
+  {
+    id: 22,
+    token: '"ACTION_END"',
+    yytext: '}',
+    yylloc: {
+      first_line: 1,
+      first_column: 56,
+      last_line: 1,
+      last_column: 57,
+      range: [
+        56,
+        57,
+      ],
+    },
+  },
+  {
+    id: 4,
+    token: '";"',
+    yytext: ';',
+    yylloc: {
+      first_line: 1,
+      first_column: 57,
+      last_line: 1,
+      last_column: 58,
+      range: [
+        57,
+        58,
+      ],
+    },
+  },
+  {
+    id: 16,
+    token: '"ID"',
+    yytext: 'hello',
+    yylloc: {
+      first_line: 1,
+      first_column: 59,
+      last_line: 1,
+      last_column: 64,
+      range: [
+        59,
+        64,
+      ],
+    },
+  },
+  {
+    id: 3,
+    token: '":"',
+    yytext: ':',
+    yylloc: {
+      first_line: 1,
+      first_column: 64,
+      last_line: 1,
+      last_column: 65,
+      range: [
+        64,
+        65,
+      ],
+    },
+  },
+  {
+    id: 16,
+    token: '"ID"',
+    yytext: 'world',
+    yylloc: {
+      first_line: 1,
+      first_column: 66,
+      last_line: 1,
+      last_column: 71,
+      range: [
+        66,
+        71,
+      ],
+    },
+  },
+  {
+    id: 24,
+    token: '"ACTION_START"',
+    yytext: '{',
+    yylloc: {
+      first_line: 1,
+      first_column: 72,
+      last_line: 1,
+      last_column: 72,
+      range: [
+        72,
+        72,
+      ],
+    },
+  },
+  {
+    id: 53,
+    token: '"ACTION_BODY"',
+    yytext: '{',
+    yylloc: {
+      first_line: 1,
+      first_column: 72,
+      last_line: 1,
+      last_column: 73,
+      range: [
+        72,
+        73,
+      ],
+    },
+  },
+  {
+    id: 53,
+    token: '"ACTION_BODY"',
+    yytext: ' blah ',
+    yylloc: {
+      first_line: 1,
+      first_column: 73,
+      last_line: 1,
+      last_column: 79,
+      range: [
+        73,
+        79,
+      ],
+    },
+  },
+  {
+    id: 53,
+    token: '"ACTION_BODY"',
+    yytext: '/',
+    yylloc: {
+      first_line: 1,
+      first_column: 79,
+      last_line: 1,
+      last_column: 80,
+      range: [
+        79,
+        80,
+      ],
+    },
+  },
+  {
+    id: 53,
+    token: '"ACTION_BODY"',
+    yytext: ' bah ',
+    yylloc: {
+      first_line: 1,
+      first_column: 80,
+      last_line: 1,
+      last_column: 85,
+      range: [
+        80,
+        85,
+      ],
+    },
+  },
+  {
+    id: 22,
+    token: '"ACTION_END"',
+    yytext: '}',
+    yylloc: {
+      first_line: 1,
+      first_column: 85,
+      last_line: 1,
+      last_column: 86,
+      range: [
+        85,
+        86,
+      ],
+    },
+  },
+  {
+    id: 4,
+    token: '";"',
+    yytext: ';',
+    yylloc: {
+      first_line: 1,
+      first_column: 86,
+      last_line: 1,
+      last_column: 87,
+      range: [
+        86,
+        87,
+      ],
+    },
+  },
+  {
+    id: 13,
+    token: '"%%"',
+    yytext: '',
+    yylloc: {
+      first_line: 3,
+      first_column: 0,
+      last_line: 3,
+      last_column: 0,
+      range: [
+        89,
+        89,
+      ],
+    },
+  },
+  {
+    id: 1,
+    token: 'end of input',
+    yytext: '',
+    yylloc: {
+      first_line: 3,
+      first_column: 0,
+      last_line: 3,
+      last_column: 0,
+      range: [
+        89,
+        89,
+      ],
+    },
+  },
+  {
+    id: 1,
+    token: 'end of input',
+    yytext: '',
+    yylloc: {
+      first_line: 3,
+      first_column: 0,
+      last_line: 3,
+      last_column: 0,
+      range: [
+        89,
+        89,
+      ],
+    },
+  },
+  {
+    id: 1,
+    token: 'end of input',
+    yytext: '',
+    yylloc: {
+      first_line: 3,
+      first_column: 0,
+      last_line: 3,
+      last_column: 0,
+      range: [
+        89,
+        89,
+      ],
+    },
+  },
+  {
+    id: 1,
+    token: 'end of input',
+    yytext: '',
+    yylloc: {
+      first_line: 3,
+      first_column: 0,
+      last_line: 3,
+      last_column: 0,
+      range: [
+        89,
+        89,
+      ],
+    },
+  },
+]

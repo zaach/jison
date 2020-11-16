@@ -1,0 +1,66 @@
+{
+  "author": {
+    "name": "Zach Carter",
+    "email": "zach@carter.name",
+    "url": "http://zaa.ch"
+  },
+  "name": "@gerhobbelt/jison-lex",
+  "description": "lexical analyzer generator used by jison",
+  "license": "MIT",
+  "version": "0.6.5-222",
+  "keywords": [
+    "jison",
+    "parser",
+    "generator",
+    "lexer",
+    "flex",
+    "tokenizer"
+  ],
+  "repository": {
+    "type": "git",
+    "url": "git://github.com/GerHobbelt/jison-lex.git"
+  },
+  "bugs": {
+    "email": "jison@librelist.com",
+    "url": "http://github.com/zaach/jison-lex/issues"
+  },
+  "main": "dist/regexp-lexer-cjs-es5.js",
+  "module": "regexp-lexer.js",
+  "bin": {
+    "jison-lex": "dist/cli-cjs.js"
+  },
+  "engines": {
+    "node": ">=8.0"
+  },
+  "dependencies": {
+    "ast-util": "0.6.0",
+    "@gerhobbelt/json5": "2.1.0-48",
+    "@gerhobbelt/lex-parser": "0.6.5-222",
+    "@gerhobbelt/nomnom": "1.8.4-29",
+    "recast": "0.18.5",
+    "@gerhobbelt/xregexp": "4.2.0-30",
+    "jison-helpers-lib": "0.6.5-222"
+  },
+  "devDependencies": {
+    "@babel/cli": "7.7.0",
+    "@babel/core": "7.7.2",
+    "@babel/preset-env": "7.7.1",
+    "babel-preset-modern-browsers": "14.0.0",
+    "@gerhobbelt/js-yaml": "3.13.1-6",
+    "chai": "4.2.0",
+    "globby": "10.0.1",
+    "mocha": "6.2.2",
+    "rollup": "1.27.2",
+    "rollup-plugin-node-resolve": "5.2.0"
+  },
+  "scripts": {
+    "test": "make test",
+    "build": "make",
+    "pub": "npm publish --access public"
+  },
+  "directories": {
+    "lib": "lib",
+    "tests": "tests"
+  },
+  "homepage": "http://jison.org"
+}

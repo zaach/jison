@@ -1,0 +1,41 @@
+{
+  "name": "@gerhobbelt/jison2json",
+  "version": "0.6.5-222",
+  "description": "Converts jison grammar definitions to JSON",
+  "main": "jison2json.js",
+  "scripts": {
+    "test": "make test",
+    "pub": "npm publish --access public"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git://github.com/GerHobbelt/jison2json.git"
+  },
+  "keywords": [
+    "jison",
+    "json",
+    "grammar",
+    "parser",
+    "generator"
+  ],
+  "preferGlobal": true,
+  "author": {
+    "name": "Zach Carter",
+    "email": "zach@carter.name",
+    "url": "http://zaa.ch"
+  },
+  "license": "MIT",
+  "bin": "./cli.js",
+  "engines": {
+    "node": ">=8.0"
+  },
+  "dependencies": {
+    "@gerhobbelt/ebnf-parser": "0.6.5-222",
+    "@gerhobbelt/lex-parser": "0.6.5-222",
+    "@gerhobbelt/nomnom": "1.8.4-29"
+  },
+  "devDependencies": {
+    "chai": "4.2.0",
+    "mocha": "6.2.2"
+  }
+}

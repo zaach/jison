@@ -1,0 +1,40 @@
+{
+  "lex": {
+    "options": {
+      "case-insensitive": true
+    },
+    "rules": [
+      ["\\s+", "/* skip whitespace */"],
+      ["OR\\b", "return 'OR';"],
+      ["AND\\b", "return 'AND';"],
+      ["NOT\\b", "return 'NOT';"],
+      ["\\(", "return 'LPAREN';"],
+      ["\\)", "return 'RPAREN';"],
+      ["[a-z][a-z0-9_.-]*", "return 'IDENT';"],
+      ["\"(?:\\\\.|[^\"])*\"", "return 'STRING';"]
+    ]
+  },
+  "bnf": {
+    "start": [["orPhrase", "return $1;"]],
+    "orPhrase": [
+      ["andPhrase", "$$ = $andPhrase;"],
+      [
+        "orPhrase OR andPhrase",
+        "$$ = {type: 'OR', args: [$orPhrase, $andPhrase]};"
+      ]
+    ],
+    "andPhrase": [
+      ["otherBool", "$$ = $otherBool;"],
+      [
+        "andPhrase AND otherBool",
+        "$$ = {type: 'AND', args: [$andPhrase, $otherBool]};"
+      ]
+    ],
+    "otherBool": [
+      ["IDENT", "$$ = {type: 'VALUE', args: [$IDENT]};"],
+      ["STRING", "$$ = {type: 'VALUE', args: [$STRING]};"],
+      ["NOT otherBool", "$$ = {type: 'NOT', args: [$otherBool]};"],
+      ["LPAREN orPhrase RPAREN", "$$ = $orPhrase;"]
+    ]
+  }
+}

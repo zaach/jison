@@ -1,0 +1,19 @@
+{
+  rules: [
+    [
+      '\\[[^\\]]\\]',
+      'return "{{{{..}}}}"',
+    ],
+  ],
+  macros: {},
+  startConditions: {},
+  codeSections: [],
+  importDecls: [],
+  unknownDecls: [],
+  __original_input__: `%%
+"["[^\\]]"]" {{{{{
+return "{{{{..}}}}";
+}}}}}
+
+`,
+}

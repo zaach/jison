@@ -1,0 +1,22 @@
+{
+  rules: [
+    [
+      'foo',
+      'return 1',
+    ],
+  ],
+  macros: {},
+  startConditions: {},
+  codeSections: [],
+  importDecls: [],
+  unknownDecls: [],
+  options: {
+    tokenStack: true,
+  },
+  __original_input__: `%options token-stack        // option name camel-casing is done very early in the game: see lex.y source code.
+
+%%
+"foo" return 1;
+
+`,
+}

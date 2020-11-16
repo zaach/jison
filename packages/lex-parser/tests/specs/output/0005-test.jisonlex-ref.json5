@@ -1,0 +1,32 @@
+{
+  rules: [
+    [
+      '$',
+      "return 'EOF'",
+    ],
+    [
+      '.',
+      '/* skip */',
+    ],
+    [
+      'stuff*(?=(\\{|;))',
+      '/* ok */',
+    ],
+    [
+      '(.+)[a-z]{1,2}hi*?',
+      '/* skip */',
+    ],
+  ],
+  macros: {},
+  startConditions: {},
+  codeSections: [],
+  importDecls: [],
+  unknownDecls: [],
+  __original_input__: `%%
+$ {return 'EOF';}
+. {/* skip */}
+"stuff"*/("{"|";") {/* ok */}
+(.+)[a-z]{1,2}"hi"*? {/* skip */}
+
+`,
+}

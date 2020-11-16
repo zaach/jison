@@ -1,0 +1,224 @@
+[
+  13,
+  {
+    id: 29,
+    token: '"UNKNOWN_DECL"',
+    yytext: {
+      name: 'foo',
+      value: 'bar',
+    },
+    yylloc: {
+      first_line: 1,
+      first_column: 0,
+      last_line: 1,
+      last_column: 9,
+      range: [
+        0,
+        9,
+      ],
+    },
+  },
+  {
+    id: 29,
+    token: '"UNKNOWN_DECL"',
+    yytext: {
+      name: 'foo',
+      value: 'baz',
+    },
+    yylloc: {
+      first_line: 2,
+      first_column: 0,
+      last_line: 2,
+      last_column: 9,
+      range: [
+        10,
+        19,
+      ],
+    },
+  },
+  {
+    id: 29,
+    token: '"UNKNOWN_DECL"',
+    yytext: {
+      name: 'qux',
+      value: '{ fizzle }',
+    },
+    yylloc: {
+      first_line: 3,
+      first_column: 0,
+      last_line: 3,
+      last_column: 16,
+      range: [
+        20,
+        36,
+      ],
+    },
+  },
+  {
+    id: 13,
+    token: '"%%"',
+    yytext: '%%',
+    yylloc: {
+      first_line: 4,
+      first_column: 0,
+      last_line: 4,
+      last_column: 2,
+      range: [
+        37,
+        39,
+      ],
+    },
+  },
+  {
+    id: 16,
+    token: '"ID"',
+    yytext: 'hello',
+    yylloc: {
+      first_line: 4,
+      first_column: 2,
+      last_line: 4,
+      last_column: 7,
+      range: [
+        39,
+        44,
+      ],
+    },
+  },
+  {
+    id: 3,
+    token: '":"',
+    yytext: ':',
+    yylloc: {
+      first_line: 4,
+      first_column: 7,
+      last_line: 4,
+      last_column: 8,
+      range: [
+        44,
+        45,
+      ],
+    },
+  },
+  {
+    id: 16,
+    token: '"ID"',
+    yytext: 'world',
+    yylloc: {
+      first_line: 4,
+      first_column: 9,
+      last_line: 4,
+      last_column: 14,
+      range: [
+        46,
+        51,
+      ],
+    },
+  },
+  {
+    id: 4,
+    token: '";"',
+    yytext: ';',
+    yylloc: {
+      first_line: 4,
+      first_column: 14,
+      last_line: 4,
+      last_column: 15,
+      range: [
+        51,
+        52,
+      ],
+    },
+  },
+  {
+    id: 13,
+    token: '"%%"',
+    yytext: '%%',
+    yylloc: {
+      first_line: 4,
+      first_column: 15,
+      last_line: 4,
+      last_column: 17,
+      range: [
+        52,
+        54,
+      ],
+    },
+  },
+  {
+    id: 60,
+    token: '"TRAILING_CODE_CHUNK"',
+    yytext: `
+
+`,
+    yylloc: {
+      first_line: 4,
+      first_column: 17,
+      last_line: 6,
+      last_column: 0,
+      range: [
+        54,
+        56,
+      ],
+    },
+  },
+  {
+    id: 1,
+    token: 'end of input',
+    yytext: '',
+    yylloc: {
+      first_line: 6,
+      first_column: 0,
+      last_line: 6,
+      last_column: 0,
+      range: [
+        56,
+        56,
+      ],
+    },
+  },
+  {
+    id: 1,
+    token: 'end of input',
+    yytext: '',
+    yylloc: {
+      first_line: 6,
+      first_column: 0,
+      last_line: 6,
+      last_column: 0,
+      range: [
+        56,
+        56,
+      ],
+    },
+  },
+  {
+    id: 1,
+    token: 'end of input',
+    yytext: '',
+    yylloc: {
+      first_line: 6,
+      first_column: 0,
+      last_line: 6,
+      last_column: 0,
+      range: [
+        56,
+        56,
+      ],
+    },
+  },
+  {
+    id: 1,
+    token: 'end of input',
+    yytext: '',
+    yylloc: {
+      first_line: 6,
+      first_column: 0,
+      last_line: 6,
+      last_column: 0,
+      range: [
+        56,
+        56,
+      ],
+    },
+  },
+]

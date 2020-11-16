@@ -1,0 +1,35 @@
+Statistical profiling result from isolate-000001C350CF4680-v8.log, (5116 ticks, 2125 unaccounted, 0 excluded).
+
+ [Shared libraries]:
+   ticks  total  nonlib   name
+     45    0.9%          C:\Program Files\nodejs\node.exe
+
+ [JavaScript]:
+   ticks  total  nonlib   name
+      1    0.0%    0.0%  RegExp: \\bMODULE\\b
+      1    0.0%    0.0%  Function: ~realpathSync fs.js:1581:40
+      1    0.0%    0.0%  Function: ~Stream internal/streams/legacy.js:6:16
+
+ [C++]:
+   ticks  total  nonlib   name
+
+ [Summary]:
+   ticks  total  nonlib   name
+      3    0.1%    0.1%  JavaScript
+      0    0.0%    0.0%  C++
+   1282   25.1%   25.3%  GC
+     45    0.9%          Shared libraries
+   2125   41.5%          Unaccounted
+
+ [C++ entry points]:
+   ticks    cpp   total   name
+
+ [Bottom up (heavy) profile]:
+  Note: percentage shows a share of a particular caller in the total
+  amount of its parent calls.
+  Callers occupying less than 2.0% are not shown.
+
+   ticks parent  name
+   2125   41.5%  UNKNOWN
+    736   34.6%    C:\Program Files\nodejs\node.exe
+

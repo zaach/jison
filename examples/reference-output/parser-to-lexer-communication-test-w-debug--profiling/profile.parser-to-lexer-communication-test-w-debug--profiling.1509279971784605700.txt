@@ -1,0 +1,37 @@
+Statistical profiling result from isolate-000001B5B5CE9C70-v8.log, (5102 ticks, 2215 unaccounted, 0 excluded).
+
+ [Shared libraries]:
+   ticks  total  nonlib   name
+     15    0.3%          C:\Program Files\nodejs\node.exe
+
+ [JavaScript]:
+   ticks  total  nonlib   name
+    200    3.9%    3.9%  Function: ~installInspectorConsole bootstrap_node.js:287:35
+
+ [C++]:
+   ticks  total  nonlib   name
+
+ [Summary]:
+   ticks  total  nonlib   name
+    200    3.9%    3.9%  JavaScript
+      0    0.0%    0.0%  C++
+   1275   25.0%   25.1%  GC
+     15    0.3%          Shared libraries
+   2215   43.4%          Unaccounted
+
+ [C++ entry points]:
+   ticks    cpp   total   name
+
+ [Bottom up (heavy) profile]:
+  Note: percentage shows a share of a particular caller in the total
+  amount of its parent calls.
+  Callers occupying less than 2.0% are not shown.
+
+   ticks parent  name
+   2215   43.4%  UNKNOWN
+    550   24.8%    C:\Program Files\nodejs\node.exe
+    266   12.0%    Function: ~installInspectorConsole bootstrap_node.js:287:35
+    265   99.6%      C:\Program Files\nodejs\node.exe
+
+    200    3.9%  Function: ~installInspectorConsole bootstrap_node.js:287:35
+

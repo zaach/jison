@@ -1,0 +1,34 @@
+{
+  options: {
+    s1: 's1"val\'ue',
+    s2: 's2\\x\'val"ue',
+    s3: 's3"val\'ue',
+    s4: 's4\\x\'val"ue',
+  },
+  bnf: {
+    hello: [
+      [
+        [
+          'symbol',
+          'world',
+        ],
+      ],
+    ],
+  },
+  grammar: {
+    hello: [
+      [
+        [
+          'symbol',
+          'world',
+        ],
+      ],
+    ],
+  },
+  __original_input__: `%options s1="s1\\"val'ue" s2='s2\\\\x\\'val"ue' s3="s3\\"val\\'ue" s4='s4\\\\x\\'val\\"ue' 
+%% 
+hello: world; 
+%%
+
+`,
+}

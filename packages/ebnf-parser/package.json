@@ -1,0 +1,47 @@
+{
+  "author": {
+    "name": "Zach Carter",
+    "email": "zach@carter.name",
+    "url": "http://zaa.ch"
+  },
+  "name": "@gerhobbelt/ebnf-parser",
+  "version": "0.6.5-222",
+  "description": "A parser for BNF and EBNF grammars used by jison",
+  "main": "dist/ebnf-parser-cjs-es5.js",
+  "module": "ebnf-parser.js",
+  "scripts": {
+    "test": "make test",
+    "pub": "npm publish --access public"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/GerHobbelt/ebnf-parser.git"
+  },
+  "keywords": [
+    "bnf",
+    "ebnf",
+    "grammar",
+    "parser",
+    "jison"
+  ],
+  "license": "MIT",
+  "engines": {
+    "node": ">=8.0"
+  },
+  "dependencies": {
+    "@gerhobbelt/lex-parser": "0.6.5-222",
+    "@gerhobbelt/xregexp": "4.2.0-30",
+    "jison-helpers-lib": "0.6.5-222"
+  },
+  "devDependencies": {
+    "@babel/cli": "7.7.0",
+    "@babel/preset-env": "7.7.1",
+    "babel-preset-modern-browsers": "14.0.0",
+    "chai": "4.2.0",
+    "globby": "10.0.1",
+    "jison-gho": "0.6.1-216",
+    "mocha": "6.2.2",
+    "rollup-plugin-node-resolve": "5.2.0",
+    "rollup": "1.27.2"
+  }
+}

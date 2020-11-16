@@ -11,68 +11,46 @@
 #   because “*” matches zero or more characters.
 
 
-compile '/jison/assets/*' do
-  # do nothing
+ignore '/**/*.bak'
+
+ignore '/examples/*.bak'
+
+passthrough '/jison/examples/**/*'
+
+compile '/jison/index.html' do
+  layout '/default-root.*'
 end
 
-
-compile '/jison/demos/*/' do
-  layout 'default'
+compile '/*/*.html' do
+  layout '/default.*'
 end
 
-compile '/jison/try/' do
-  filter :erb
-  layout 'default'
+compile '/*/*/*.html' do
+  layout '/default-l3.*'
 end
 
-compile '/jison/try/*' do
-  # do nothing
-end
-
-compile '/jison/' do
-  filter :erb
-end
-
-compile '*' do
+compile '/*/*.md' do
   filter :kramdown
-  layout 'default'
+  layout '/default.*'
+end
+
+compile '/*/*/*.md' do
+  filter :kramdown
+  layout '/default-l3.*'
 end
 
 ### Routing #########################################################
 
-route '/jison/assets/styles/*' do
-  item.identifier.gsub(/\/$/, '') + '.css'
+route '/jison/index.{html,md}' do
+  '/jison/index.html'
 end
 
-route '/jison/assets/js/*' do
-  item.identifier.gsub(/\/$/, '') + '.js'
+route '/**/*.{html,md}' do
+  item.identifier.without_ext + '/index.html'
 end
 
-route '/jison/assets/pngs/*' do
-  item.identifier.gsub('/pngs/', '/images/').gsub(/\/$/, '') + '.png'
+compile '/**/*' do
+  write item.identifier.to_s
 end
 
-
-route '/jison/assets/*' do
-  dir = File.join('content', item.identifier)
-  puts dir
-  base = File.basename(dir)
-  regexp = /^#{base}\.(?!yaml)(.*)/
-
-  file_name = Dir.entries(dir).sort.find do |d|
-    d.match(regexp)
-  end
-
-  if file_name
-    ext = file_name.match(regexp)[1]
-    File.join(File.dirname(item.identifier), "#{base}.#{ext}")
-  else
-    nil
-  end
-end
-
-route '*' do
-  item.identifier + 'index.html'
-end
-
-layout '*', :erb
+layout '/**/*', :erb

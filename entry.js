@@ -1,3 +1,2 @@
 
-Jison = require('./lib/jison.js');
-bnf = require('ebnf-parser');
+Jison = require('./dist/jison-cjs-es5.js');

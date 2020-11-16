@@ -1,0 +1,21 @@
+{
+  rules: [
+    [
+      'foo',
+      'return 1',
+    ],
+  ],
+  macros: {},
+  startConditions: {},
+  codeSections: [],
+  importDecls: [],
+  unknownDecls: [],
+  options: {
+    flex: true,
+  },
+  __original_input__: `%options flex
+%%
+"foo" return 1;
+
+`,
+}

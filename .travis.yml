@@ -1,3 +1,20 @@
 language: node_js
+sudo: false
+
 node_js:
-  - 0.10
+  - 9
+  - 8
+  - 7
+  - 6
+  - 5
+  - 4
+  - node
+
+# Quick fix for TravisCI test failures:
+# 
+#    SyntaxError: Block-scoped declarations (let, const, function, class) not yet supported outside strict mode
+#    
+matrix:
+  allow_failures:
+    - node_js: 4
+    - node_js: 5

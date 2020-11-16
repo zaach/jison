@@ -1,0 +1,27 @@
+{
+  rules: [
+    [
+      '\\[[^\\\\]\\]',
+      'return true',
+    ],
+    [
+      'f"oo\'bar',
+      "return 'baz2'",
+    ],
+    [
+      'fo"obar',
+      "return 'baz'",
+    ],
+  ],
+  macros: {},
+  startConditions: {},
+  codeSections: [],
+  importDecls: [],
+  unknownDecls: [],
+  __original_input__: `%%
+"["[^\\\\]"]" {return true;}
+'f"oo\\'bar'  {return 'baz2';}
+"fo\\"obar"  {return 'baz';}
+
+`,
+}

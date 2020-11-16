@@ -1,0 +1,17 @@
+{
+  rules: [
+    [
+      '(|bar)(foo|)(|)',
+      'return 1',
+    ],
+  ],
+  macros: {},
+  startConditions: {},
+  codeSections: [],
+  importDecls: [],
+  unknownDecls: [],
+  __original_input__: `%%
+(|"bar")("foo"|)(|) return 1;
+
+`,
+}

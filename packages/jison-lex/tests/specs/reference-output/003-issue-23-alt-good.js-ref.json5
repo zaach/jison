@@ -1,0 +1,213 @@
+[
+  13,
+  {
+    id: 'WORD',
+    token: 'WORD',
+    yytext: 'A',
+    yylloc: {
+      first_line: 1,
+      first_column: 0,
+      last_line: 1,
+      last_column: 1,
+      range: [
+        0,
+        1,
+      ],
+    },
+  },
+  {
+    id: 'TOK_A',
+    token: 'TOK_A',
+    yytext: 'a',
+    yylloc: {
+      first_line: 1,
+      first_column: 2,
+      last_line: 1,
+      last_column: 3,
+      range: [
+        2,
+        3,
+      ],
+    },
+  },
+  {
+    id: 'WORD',
+    token: 'WORD',
+    yytext: 'B',
+    yylloc: {
+      first_line: 1,
+      first_column: 4,
+      last_line: 1,
+      last_column: 5,
+      range: [
+        4,
+        5,
+      ],
+    },
+  },
+  {
+    id: 'WORD',
+    token: 'WORD',
+    yytext: 'C',
+    yylloc: {
+      first_line: 1,
+      first_column: 6,
+      last_line: 1,
+      last_column: 7,
+      range: [
+        6,
+        7,
+      ],
+    },
+  },
+  {
+    id: 'NUMBER',
+    token: 'NUMBER',
+    yytext: '1',
+    yylloc: {
+      first_line: 1,
+      first_column: 8,
+      last_line: 1,
+      last_column: 9,
+      range: [
+        8,
+        9,
+      ],
+    },
+  },
+  {
+    id: '+',
+    token: '+',
+    yytext: '+',
+    yylloc: {
+      first_line: 1,
+      first_column: 10,
+      last_line: 1,
+      last_column: 11,
+      range: [
+        10,
+        11,
+      ],
+    },
+  },
+  {
+    id: 'NUMBER',
+    token: 'NUMBER',
+    yytext: '2',
+    yylloc: {
+      first_line: 1,
+      first_column: 12,
+      last_line: 1,
+      last_column: 13,
+      range: [
+        12,
+        13,
+      ],
+    },
+  },
+  {
+    id: '+',
+    token: '+',
+    yytext: '+',
+    yylloc: {
+      first_line: 1,
+      first_column: 14,
+      last_line: 1,
+      last_column: 15,
+      range: [
+        14,
+        15,
+      ],
+    },
+  },
+  {
+    id: 'NUMBER',
+    token: 'NUMBER',
+    yytext: '3',
+    yylloc: {
+      first_line: 1,
+      first_column: 16,
+      last_line: 1,
+      last_column: 17,
+      range: [
+        16,
+        17,
+      ],
+    },
+  },
+  {
+    id: 'EOF',
+    token: 'EOF',
+    yytext: '',
+    yylloc: {
+      first_line: 1,
+      first_column: 17,
+      last_line: 1,
+      last_column: 17,
+      range: [
+        17,
+        17,
+      ],
+    },
+  },
+  {
+    id: 1,
+    token: 'EOF',
+    yytext: '',
+    yylloc: {
+      first_line: 1,
+      first_column: 17,
+      last_line: 1,
+      last_column: 17,
+      range: [
+        17,
+        17,
+      ],
+    },
+  },
+  {
+    id: 1,
+    token: 'EOF',
+    yytext: '',
+    yylloc: {
+      first_line: 1,
+      first_column: 17,
+      last_line: 1,
+      last_column: 17,
+      range: [
+        17,
+        17,
+      ],
+    },
+  },
+  {
+    id: 1,
+    token: 'EOF',
+    yytext: '',
+    yylloc: {
+      first_line: 1,
+      first_column: 17,
+      last_line: 1,
+      last_column: 17,
+      range: [
+        17,
+        17,
+      ],
+    },
+  },
+  {
+    id: 1,
+    token: 'EOF',
+    yytext: '',
+    yylloc: {
+      first_line: 1,
+      first_column: 17,
+      last_line: 1,
+      last_column: 17,
+      range: [
+        17,
+        17,
+      ],
+    },
+  },
+]

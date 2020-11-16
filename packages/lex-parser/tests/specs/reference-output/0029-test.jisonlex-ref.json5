@@ -1,0 +1,130 @@
+{
+  fail: 1,
+  spec: `%%
+"["[^\\]]"]" %{{{{{
+return "%{..%}";
+}}}}}%
+a %{ return "A"; %}
+
+`,
+  err: {
+    name: 'JisonLexerError',
+    message: `Lexical error on line 2: 
+Incorrectly terminated action code block. We're expecting the
+'%}}}}}' end marker to go with the given start marker.
+Regrettably, it does not exist in the remainder of the input.
+
+  Erroneous area:
+1: %%
+2: "["[^\\]]"]" %{{{{{
+^..............^^^^^^
+3: return "%{..%}";
+4: }}}}}%`,
+    stack: `JisonLexerError: Lexical error on line 2: 
+Incorrectly terminated action code block. We're expecting the
+'%}}}}}' end marker to go with the given start marker.
+Regrettably, it does not exist in the remainder of the input.
+
+  Erroneous area:
+1: %%
+2: "["[^\\]]"]" %{{{{{
+^..............^^^^^^
+3: return "%{..%}";
+4: }}}}}%
+    at Object.parseError (\lex-parser-cjs-es5.js:3626:13)
+    at Object.lexer_parseError [as parseError] (\lex-parser-cjs-es5.js:5320:44)
+    at Object.yyError [as yyerror] (\lex-parser-cjs-es5.js:5352:19)
+    at Object.lexer__performAction [as performAction] (\lex-parser-cjs-es5.js:6783:21)
+    at Object.lexer_test_match [as test_match] (\lex-parser-cjs-es5.js:6183:34)
+    at Object.lexer_next [as next] (\lex-parser-cjs-es5.js:6289:22)
+    at Object.lexer_fastLex [as fastLex] (\lex-parser-cjs-es5.js:6388:18)
+    at fastLex (\lex-parser-cjs-es5.js:4181:25)
+    at Object.parse (\lex-parser-cjs-es5.js:4302:22)
+    at Object.yyparse [as parse] (\lex-parser-cjs-es5.js:8185:25)
+    at Context.testEachParserExample (\all-tests.js:318:19)
+    at callFn (\runnable.js:372:21)
+    at Test.Runnable.run (\runnable.js:364:7)
+    at Runner.runTest (\runner.js:455:10)
+    at \runner.js:573:12
+    at next (\runner.js:369:14)
+    at \runner.js:379:7
+    at next (\runner.js:303:14)
+    at \runner.js:342:7
+    at done (\runnable.js:319:5)
+    at callFn (\runnable.js:395:7)
+    at Hook.Runnable.run (\runnable.js:364:7)
+    at next (\runner.js:317:10)
+    at Immediate.<anonymous> (\runner.js:347:5)
+    at runCallback (timers.js:794:20)
+    at tryOnImmediate (timers.js:752:5)
+    at processImmediate [as _immediateCallback] (timers.js:729:5)`,
+    hash: {
+      errStr: `Lexical error on line 2: 
+Incorrectly terminated action code block. We're expecting the
+'%}}}}}' end marker to go with the given start marker.
+Regrettably, it does not exist in the remainder of the input.
+
+  Erroneous area:
+1: %%
+2: "["[^\\]]"]" %{{{{{
+^..............^^^^^^
+3: return "%{..%}";
+4: }}}}}%`,
+      recoverable: false,
+      text: '%{{{{{',
+      token: null,
+      line: 1,
+      loc: {
+        first_line: 2,
+        first_column: 12,
+        last_line: 2,
+        last_column: 18,
+        range: [
+          15,
+          21,
+        ],
+      },
+      yy: {
+        actionInclude: [],
+        options: {},
+        __options_flags__: 0,
+        __options_category_description__: '???',
+        startConditions: {},
+        __context_description__: [
+          '???CONTEXT???',
+        ],
+        depth: 0,
+        include_command_allowed: false,
+      },
+      lexer: {
+        yy: {},
+        _input: '',
+        yytext: '',
+        yyleng: 0,
+        match: '',
+        matches: false,
+        _more: false,
+        _backtrack: false,
+        yylloc: {
+          first_line: 1,
+          first_column: 0,
+          last_line: 1,
+          last_column: 0,
+          range: [
+            0,
+            0,
+          ],
+        },
+        _signaled_error_token: false,
+        done: false,
+        yylineno: 0,
+        matched: '',
+        conditionStack: [
+          'INITIAL',
+        ],
+        offset: 0,
+        base_position: 0,
+      },
+    },
+  },
+}

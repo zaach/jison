@@ -1,0 +1,152 @@
+//
+// optimizer reduction rules / assembly language analysis
+//
+
+1+2+3
+-> 1 PUSH 2 ADD PUSH 3 ADD
+|  3 PUSH 2 ADD PUSH 1 ADD
+-> 3 PUSH 2 PUSH 1 ADD ADD
+    PUSH        3
+    PUSH        2
+    ADD_3       1
+
+1-2-3
+-> 3 PUSH 2 PUSH 1 SUB SUB
+    PUSH        3
+    PUSH        2
+    SUB_3       1
+|
+    PUSH        3
+    ADD         2
+    PUSH        .
+    SUB         1
+
+1-(2-3)
+-> 3 PUSH 2 SUB PUSH 1 SUB
+    PUSH        3
+    SUB         2
+    PUSH        .
+    SUB         1
+
+(1+2)+(3+4)
+-> 4 PUSH 3 ADD PUSH 2 PUSH 1 ADD ADD
+    PUSH        4
+    ADD         3
+    PUSH        .
+    PUSH        2
+    ADD_3       1               -> 1+2+7
+
+F1(F2(1), 2)
+-> 2 PUSH 1 CALL_1(F2) CALL_2(F1)
+    CALL_1      F2  1
+    MOVE        R1  2
+    CALL_2      F1  .   R1
+|
+    PUSH        2                       -> S1
+    CALL_1      F2  1
+    CALL_2      F1  .   S1
+
+F1(2, F2(1), 3)
+-> 3 PUSH 1 CALL_1(F2) PUSH 2 CALL_3(F1)
+    PUSH        3                       -> S1
+    CALL_1_R1   F2  1                   -> call result stored in R1, not A
+    CALL_3      F1  2   R1  S1
+
+F1(1, 2, 3, 4, 5, 6, 7)
+-> 7 PUSH 6 PUSH 5 PUSH 4 PUSH 3 PUSH 2 PUSH 1 CALL_N(F1, 7)
+    PUSH        7
+    PUSH        6
+    PUSH        5
+    PUSH        4
+    PUSH        3
+    PUSH        2
+    CALL_N      F1  #7  1
+
+---
+
+## Can you get rid of the PUSH opcodes while maintaining the same behaviour & performance?
+
+The pushes are implicit in the command that follows them:
+
+- NUM implies the previous accu value must be PUSHed
+- function calls and ADD/SUB/etc. imply a fixed number of POPs; the FUNCTION_N opcode accepts a variable number of pushed
+  arguments but then also implies all those arguments (N) are popped; this is the only variable-size POP action.
+- `SUM 3` should be replaced by SUM-immediate, i.e. SUMI, because SUM implies using the already loaded accumulator. 
+  At least we have to differentiate between loading an immediate value (via SUMI) and using a previously calculated 
+  expression (when using the SUM opcode).
+- The 'comma', i.e. the separation of arguments of a function call can be implicit as they are recognisable 
+  by an interruption in the flow of the opcode execution chain: code which is executed as part of the previous 
+  argument expression does not deliver the resulting accumulator value into any term used by any opcode in 
+  the next argument expression. Its value will end up pushed on the stack by the first implicit push action 
+  which follows. 
+
+
+---
+
+http://algoviz.org/OpenDSA/Books/OpenDSA/html/CompleteTree.html
+
+CHAPTER 3 BINARY TREES
+
+3.16. Array Implementation for Complete Binary Trees
+
+3.16.1. Array Implementation for Complete Binary Trees
+
+From the full binary tree theorem, we know that a large fraction of the space in a typical binary tree node implementation is devoted to structural overhead, not to storing data. This module presents a simple, compact implementation for complete binary trees. Recall that complete binary trees have all levels except the bottom filled out completely, and the bottom level has all of its nodes filled in from left to right. Thus, a complete binary tree of nn nodes has only one possible shape. You might think that a complete binary tree is such an unusual occurrence that there is no reason to develop a special implementation for it. However, the complete binary tree has practical uses, the most important being the heap data structure. Heaps are often used to implement priority queues and for external sorting algorithms.
+
+We begin by assigning numbers to the node positions in the complete binary tree, level by level, from left to right as shown in Figure 3.16.1. An array can store the tree's data values efficiently, placing each data value in the array position corresponding to that node's position within the tree. The table lists the array indices for the children, parent, and siblings of each node in Figure 3.16.1.
+
+xxxxxxxxxxx
+
+Looking at the table, you should see a pattern regarding the positions of a node's relatives within the array. Simple formulas can be derived for calculating the array index for each relative of a node RR from RR's index. No explicit pointers are necessary to reach a node's left or right child. This means there is no overhead to the array implementation if the array is selected to be of size nn for a tree of nn nodes.
+
+The formulae for calculating the array indices of the various relatives of a node are as follows. The total number of nodes in the tree is nn. The index of the node in question is rr, which must fall in the range 0 to n−1.
+
+Parent(r) =⌊(r−1)/2⌋ if r≠0.
+Left child(r) =2r+1 if 2r+1≤n.
+Right child(r) =2r+2 if 2r+2≤n.
+Left sibling(r) =r−1 if r is even.
+Right sibling(r) =r+1 if r is odd and r+1≤n.
+
+
+
+---
+
+
+Thoughts on parsing.
+
+Our first priority is speed, our second priority is storage size, both in the machine and in the storage medium whether it be localStorage or remote storage on the server. Given that inlining floating point values is advisable from a storage performance perspective, we must consider options which look like inlining so that everything can be treated as a Unicode string while in memory they act like having separate, dedicated storage where we have direct and easy, fast access to 'native' cell references, floating point and integer numeric values.
+
+The idea here is to use column storage for in memory: every type of value, whether a cell reference, a floating point value, a string, a Boolean or a numeric reference, is stored in its own column, i.e. in its own array. For performance and size considerations it makes sense to only do this for floating point and integer numeric values because booleans are simply stored within the opcode - there are only two values anyway - and strings can be extracted straight from the Unicode string that represents the entire formula AST.
+
+To aid transmission and storage performance, we can then sequence the column stores: what I mean here is that each is concatenated with the others and then encoded in Unicode form. Most non-calculus activity regarding formulas concerns moving formulas around, hence manipulating cell references and possibly loading or saving the formula structure. Such an approach benefits from easy and fast access to cell references, which are used by the formula. Thus, it benefits us when we separate out every cell reference from the formula AST. This saves any move cell or project cell activity from having to scan the formula AST. If these operations can simply go through the list of available cell references and manipulate the ones that need to be changed, then we can have the maximum performance for that operation.
+
+Another concern is with Monte Carlo simulations, tornado analysis and other simulations involving formulas and combining them. The formulas are related to one another via the cell references. So if we can easily replace a cell reference by an entire formula as a kind of micro-expansion operation that would be nice. (This idea is already quite old and is called 'super-formulas'. Here we concern ourselves only with the consequences of super-formula functionality: what do we have to do when we wish to construct them and what costs does that incur, both at construction and superformula evaluation (calculation) time?)
+
+One lingering concern is pretty printing a.k.a. reprinting the formula for human consumption, which is required when you wish to edit the formula for example. Right now, the idea is to use special opcodes or opcode structures which are treated differently by the calculus engine and the printing engine where the calculus engine, for instance, can use folded constants and skip a section of the AST, while the pretty printer has to go and and expand the constant folded expression so that the user gets to see the original typed expression, for instance 10+15. Here we can apply the same concept as we may want to use for encoding cell references and floating point values which is to place them outside the formula AST itself and put them in front in the Unicode string. That would mean that for printing we have an additional leading section which lists the printing patches required for certain parts of the AST. Think of it like a patch telling you, for instance, to modify position number five and not consume that opcode as is, but reprint it in a different way. This would make the actual executable AST shorter as there would be no more jumps over pretty printing instructions following constant folded operations and suchlike.
+
+That means that the encoded formula consists of four sections altogether. Each one following the other in the Unicode string:
+1) a count followed by a sequence of cell and range references (more on the range references further below),
+2) a count followed by a sequence of encoded floating point and integer values (these would then be decoded on load and stored in native form in a separate column store to speed-up calculations when using the formula AST: after all, the index to the floating point or integer number remains the same whether it is encoded or stored in native form),
+3) pretty printing hints for human readable output of the compiled formula: again, this would be a count followed by a series of patches,
+4) the formula AST itself, carrying the opcodes and inlined small numbers, booleans, strings, et cetera.
+
+Though decoding an encoded floating point value using our own format instead of the standard JSON is much faster, it is still not on par with directly accessing an indexed native floating point value in an array; at least I don't expect it to be on par or get anywhere near even for very short floats values as it takes a lot more instructions to execute then a simple indexing and fetching of a native floating point value! This is why we want to have a column store for floating point and at least also large integer numbers sitting separate, next to the formula AST so that calculus execution can be as fast as possible. We can perform better if we have tiny indexes into that column store inlined in the AST because for usual and even very large formulas one may expect such indexes not to surpass, let us say, 1000-2000, which are reasonable members to encode in a 15 bit word when it has to share that space with the opcodes and the formula indexes as well.
+
+
+
+Regarding types of opcodes which require indexed excess
+
+The following opcodes would benefit from some sort of index to another entity:
+1) The executable function opcode would need an index to the function at hand. Currently, Excel has about 500 functions defined so a range of 2000 or 4000 should be fine if we only use this opcode for predefined functions, hence
+2) the executable user defined function (UDF) opcode would also need an index to the user-defined function at hand. I don't know the limitations that Excel puts on user-defined functions, but in principle these are limitless. However, a more or less sane limit would probably be a couple of thousand entries.
+3) any opcode loading an immediate value, be it an integer or floating point value: if we differentiate between integers and floating point values in our formula, then we would need different opcodes to load these immediate values. The added benefit of this may be artificial separation in that we can use different optimal encodings for integer and floating point values. After all, parsing the formula delivers not just the values, but also some knowledge about the format of the values as the user typed it so we can say with reasonable certainty whether an integer or floating point value was intended. Hence this calls for two load immediate opcodes.
+4) any opcode loading a string value if we decide that string values should be placed in their own column store or have some other special treatments so that they do not end up inlined in the executable formulae AST. However, I might argue that strings can be easily encoded and coped with during calculus and traversal of the formula AST: after all, their size is known from the start and they are immutable, also the Unicode string representation of the AST is identical to the native storage format of the string itself, so it only needs to be extracted. Then there is also the concern about performance: I don't mind if string handling is slightly suboptimal: the use of our Excel-like system is geared towards numerical analysis rather than string or generic data manipulation.
+5) referencing a cell or a range or a fragmented range would also require index access to these references as they would be stored in their own column store while residing in memory. We get into a bit of a pickle when we concern ourselves with fragmented ranges and particularly when we project a formula which contains ranges which need to be split and this converted to fragmented ranges: it is preferable that the index to the 'range' remains the same, so that the formula AST does not need to be modified while we perform this projection. That means that a 'range reference' as such can also mean a fragmented range reference and that an indexed location stores not just one cell and range reference. Indexed storage slot: is not necessarily a simple entry, but can contain a more or less large range of cells, cell references, range references, et cetera, all combined into a single fragmented range reference at the given index. Hence we need to address this part in more depth…
+
+
+Considering range references and their fragmented brethren.
+
+Given item 5 above, we need to realise that a range reference is not necessarily a simple thing but can consist of multiple parts, each of which can be another cell reference or arrange reference.
+
+However, we can ask ourselves whether this should be nestable, i.e. that a fragmented range reference can contain another fragmented range reference which can contain another fragmented range reference and so on: this might be handy from the perspective of amount of work to be done when creating these references, but it only adds to our workload when we access them and generally one can safely assume that the number of read accesses outshines the number of write accesses, hence flattening this structure would be beneficial to all: thus a fragmented range reference would consist only of simple cell references and simple range references. We wish to support simple range references as a separate entity, both in memory and in storage because expanding range references might be nice, and we have done so in the past, but it is killing when you have formulas which reference very large ranges and then go and, for instance, project or analyse or calculate these formulas: it is a large memory load when you have to expand range like that. On the other hand, it is harder to process range references in the face of operations such as cell projection or moving cells or even entire columns or rows around in your spreadsheet: at least it would mean that certain range references would have to be split into multiple parts - worst-case four parts for every range reference if the split corner happens to be in the centre of the range – correct that! A rectangular range area would have to be split into *three* parts in the worst case when the cutting corner is in the middle of the range, not four parts ss I said just before – while one might argue that such range reference treatment should also include merging adjacent ranges. While that last feature might be a nice to have, it is not absolutely necessary for correct operation of the formulas and when the human user gets concerned or upset about this after editing formulas in cells which have been involved with cell projection or cell row or column movement, then they can always do this by hand, though that would introduce another opportunity for error as we replace automated behaviour by human controlled action.
+
