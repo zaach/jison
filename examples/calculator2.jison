@@ -65,7 +65,7 @@ e
     | '(' e ')'
         {$$ = $2;}
     | VARIABLE
-        { $$ = yy[yytext]; }
+        {$$ = yy[yytext];}
     | NUMBER
         {$$ = Number(yytext);}
     | E
